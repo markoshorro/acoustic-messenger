@@ -13,3 +13,4 @@ over a real-world communication link).
 *   git pull: fetch from and integrate with another repository or a local branch
 *   git checkout -- (file): discard changes in working directory
 *   git reset (file): unstage file (pass from ready to local change)
+*   git log: show commit logs
