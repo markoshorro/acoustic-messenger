@@ -12,5 +12,4 @@ over a real-world communication link).
 *   git push: push commit to the remote repository
 *   git pull: fetch from and integrate with another repository or a local branch
 *   git checkout -- (file): discard changes in working directory
-
-Oskar is the best
+*   git reset (file): unstage file (pass from ready to local change)
