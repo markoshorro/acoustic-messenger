@@ -25,22 +25,23 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %                 desired eye diagram).
     %%
 	%% Some parameters
-    f_samp = 44*10^3; %sampling freq
-    T_samp= 1/f_samp;
-    R_b = 444; %bit rate
-    N = 432; % number of bits to transmit
-    m= 2; %QSPK, 4 different options
-    M=4; %Alphabet    
+    load '../parameters.m'
+    
+    %% Hearing
     
     %% Passband to baseband
+    % Where Vt
+    ak = Yq*sqrt(2)*cos(2*pi*fc*t);
+    bk = Yq*sqrt(2)*sin(2*pi*fc*t);
     
     %% Syncronization
     
     %% Demodulation
-    QPSK_const = [1+1i; -1+1i; -1-1i; 1-1i];
-
     
     %% Symbol to bits
-    % we should have a 2D vector
+    % we should have a 1D vector with values between [1,4]
+    bits_group = de2bi(message, m);
+    Xhat = buffer(bits_group, 1);
+    
     
 end
