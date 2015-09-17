@@ -18,3 +18,5 @@ We have 32 bits left to synchronization(maybe marking instead of pilot?)
 
 
 If not all 50 chars are used in a transmitted msg: fill remaining bits with 0's
+
+QPSK 4 Constellation = [1+1i,-1+1i,1-1i,-1-1i]
