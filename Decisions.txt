@@ -1,0 +1,22 @@
+
+!!!!!!!!!!!!!!!!!!!!!!!	  tau :: Symbol time  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+BW for green curve is 150Hz
+
+For ISI-free transmission we need BW > 1 / 2*tau
+	We then get that tau > (1 / 300)s
+	But this gives a too small alpha (~0.05)
+
+	Increasing tau = (1 / 222)s gives alpha = 0.3
+
+Bit rate = 444 bits/s
+
+ending maximum 50 ASCII chars - ASCII has 2^8 chars which leads to 
+  			  	50*8 = 400 bits to send a full msg
+
+We have 32 bits left to synchronization(maybe marking instead of pilot?)
+
+
+If not all 50 chars are used in a transmitted msg: fill remaining bits with 0's
+
+QPSK 4 Constellation = [1+1i,-1+1i,1-1i,-1-1i]
