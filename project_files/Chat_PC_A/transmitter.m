@@ -40,16 +40,34 @@ symbols_up = upsample(symbols,round(f_srs));
 
 A=conv(y,symbols_up); 
                     
-figure; subplot(2,1,1); plot(real(pulse_tr_RC), 'b');                         
+figure; subplot(2,1,1); plot(real(A), 'b');                         
                         title('real')
-        subplot(2,1,2); plot(imag(pulse_tr_RC), 'b');                        
+        subplot(2,1,2); plot(imag(A), 'b');                        
                         title('imag')
                         
                         
 
-%freq(A)
 
-A=A.*(cos(2*pi*fc)+sin(2*pi*fc))
+
+A= [real(A).*cos(2*pi*fc) imag(A).*sin(2*pi*fc)];
+size(A)
+
+
+
+N=length((real(A))); %length of one vector, i.e our window length (time)
+%N=pow2(nextpow2(L)); %length of our fft (total bins)
+N=1024;
+
+f_vec=(f_samp/N)*(-floor(N/2):1:ceil(N/2)-1);
+
+% figure(89)
+% plot(f_vec,fft(A,N))
+
+length(f_vec)
+length(fft(A,N))
+figure(50)
+plot(f_vec,20*log10((abs(fftshift(fft(A,N)))).^2))
+
 sound(real(A),f_samp)
 
 
