@@ -1,6 +1,6 @@
 %function transmitter(packet,fc)
-packet = randsrc(1,N,[0 1]);
-fc=8000
+
+fc=800
 
 f_samp = 44*10^3; %sampling freq
 T_samp= 1/f_samp;
@@ -9,6 +9,8 @@ R_b = 444; %bit rate
 disp('New test')
 
 N = 432; % number of bits to transmit
+packet = randsrc(1,N,[0 1]);
+
 
 m= 2; %QPSK, 4 different options
 M=4; %Alphabet
@@ -40,19 +42,20 @@ symbols_up = upsample(symbols,round(f_srs));
 
 A=conv(y,symbols_up); 
                     
-figure; subplot(2,1,1); plot(real(A), 'b');                         
-                        title('real')
-        subplot(2,1,2); plot(imag(A), 'b');                        
-                        title('imag')
+% figure; subplot(2,1,1); plot(real(A), 'b');                         
+%                         title('real')
+%         subplot(2,1,2); plot(imag(A), 'b');                        
+%                         title('imag')
                         
                         
-
-
-
-A= [real(A).*cos(2*pi*fc) imag(A).*sin(2*pi*fc)];
 size(A)
 
+                        
+%A= A*exp(1i.*2.*pi.*t);
 
+A=real(A);
+
+size(A)
 
 N=length((real(A))); %length of one vector, i.e our window length (time)
 %N=pow2(nextpow2(L)); %length of our fft (total bins)
@@ -63,8 +66,7 @@ f_vec=(f_samp/N)*(-floor(N/2):1:ceil(N/2)-1);
 % figure(89)
 % plot(f_vec,fft(A,N))
 
-length(f_vec)
-length(fft(A,N))
+
 figure(50)
 plot(f_vec,20*log10((abs(fftshift(fft(A,N)))).^2))
 
