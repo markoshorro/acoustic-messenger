@@ -23,11 +23,21 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %                 filtering and timing synchronization (properly cut so
     %                 that MATLAB eyediagram(eyed.r, eyed.fsfd) plots a 
     %                 desired eye diagram).
-    %%
+    %
 	%% Some parameters
     load '../parameters.m'
+    RecordingTime = 6; %How long (in seconds) we will record sound
     
     %% Hearing
+    
+    recording = audiorecorder(44000,8,1);
+    record(recording);
+    T = timer('TimerFcn',@(~,~)disp('Test running'),'StartDelay',RecordingTime);
+    start(T)    %waiting for 'RecordingTime' seconds
+    wait(T)
+    stop(recording);
+    data = getaudiodata(recording,'int8');
+    
     
     %% Passband to baseband
     % Where Vt
