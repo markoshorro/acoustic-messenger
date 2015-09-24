@@ -12,6 +12,7 @@ T_samp = 1/f_samp;
 %% Bit rate
 R_b = 444;
 
+
 %% Number of bits to transmit
 N = 432;
 
@@ -20,3 +21,10 @@ m = 2;
 
 %% Alphabet
 M = 4; 
+
+%% Symbol rate
+R_s = R_b/m;
+
+%% Symbol time
+
+Tau=1/R_s;
