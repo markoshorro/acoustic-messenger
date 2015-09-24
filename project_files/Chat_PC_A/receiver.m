@@ -28,7 +28,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     load '../parameters.m'
     RecordingTime = 6; %How long (in seconds) we will record sound
     
-    %% Hearing
+    %% Audio data collection 
     
     recording = audiorecorder(44000,8,1);
     record(recording);
