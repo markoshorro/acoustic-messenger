@@ -7,10 +7,10 @@ const = [1+1i; -1+1i; -1-1i; 1-1i];
 
 %% Sampling freq
 fs = 44*10^3;
-T_samp = 1/fs;
+Ts = 1/fs;
 
 %% Bit rate
-R_b = 440;
+Rb = 440;
 
 %% Number of bits to transmit
 N = 432;
@@ -22,13 +22,13 @@ m = 2;
 M = 4; 
 
 %% Symbol rate
-R_s = R_b/m;
+Rs = Rb/m;
 
 %% Symbol time
-Tau=1/R_s;
+Tau=1/Rs;
 
 %% Span
 span=6;
 
-%% Samples for symbol
-f_srs=fs/R_s;
+%% Samples per symbol
+sps=fs/Rs;
