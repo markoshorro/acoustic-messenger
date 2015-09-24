@@ -39,5 +39,7 @@ function transmitter(packet, fc)
     s_passband = real(s_tailness.*(sqrt(2)*exp(1i*2*pi*fc*t)));
     figure;
     pwelch(s_passband,hamming(512),[],[],fs,'centered');
+    
+    sound(s_passband)
 
 end
