@@ -10,8 +10,7 @@ f_samp = 44*10^3;
 T_samp = 1/f_samp;
 
 %% Bit rate
-R_b = 444;
-
+R_b = 440;
 
 %% Number of bits to transmit
 N = 432;
@@ -26,5 +25,10 @@ M = 4;
 R_s = R_b/m;
 
 %% Symbol time
-
 Tau=1/R_s;
+
+%% Span
+span=6;
+
+%% Samples for symbol
+f_srs=f_samp/R_s;
