@@ -6,8 +6,8 @@
 const = [1+1i; -1+1i; -1-1i; 1-1i];
 
 %% Sampling freq
-f_samp = 44*10^3;
-T_samp = 1/f_samp;
+fs = 44*10^3;
+T_samp = 1/fs;
 
 %% Bit rate
 R_b = 440;
@@ -31,4 +31,4 @@ Tau=1/R_s;
 span=6;
 
 %% Samples for symbol
-f_srs=f_samp/R_s;
+f_srs=fs/R_s;
