@@ -40,6 +40,7 @@ function transmitter(packet, fc)
     figure(1);
     pwelch(s_passband,hamming(512),[],[],fs,'centered');
     
+    figure(2)
+    plot(s_passband)
     sound(s_passband,44e3)
-
 end

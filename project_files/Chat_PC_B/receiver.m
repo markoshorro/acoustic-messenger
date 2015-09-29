@@ -1,4 +1,4 @@
-function [Xhat, psd, const, eyed] = receiver(tout,fc)
+%function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -25,7 +25,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %                 desired eye diagram).
     %
 	%% Some parameters
-    load '../parameters.m'
+    run('../parameters.m')
     RecordingTime = 6; %How long (in seconds) we will record sound
     
     %% Hearing
@@ -41,23 +41,28 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Passband to baseband
   
-    
+    fc=7000;
+    t = t(1:length(s_tailness));
+    s_passband = real(s_tailness.*(sqrt(2)*exp(-1i*2*pi*fc*t)));
     
     %% LP-filter
-    
+    XX;
     [b,a] = butter(2,6500/22e3,'low');
     
     %h=fvtool(b,a) %if you want to look at it
     
-    Y = filter(b,a,data);
+    Y = filter(b,a,XX);
     
     
     
     %% Syncronization
     
     %% Demodulation
+    [si,~] = rtrcpuls(0.3, Tau, fs, span);
+    Y=conv(si,Y);
     
     
+    plot(Y)
     
     
     %% Symbol to bits
@@ -66,4 +71,4 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     Xhat = buffer(bits_group, 1);
     
     
-end
+%end
