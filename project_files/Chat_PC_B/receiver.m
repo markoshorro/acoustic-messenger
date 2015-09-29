@@ -29,7 +29,6 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     RecordingTime = 6; %How long (in seconds) we will record sound
     
     %% Hearing
-    
     recording = audiorecorder(44000,8,1);
     record(recording);
     T = timer('TimerFcn',@(~,~)disp('Test running'),'StartDelay',RecordingTime);
@@ -40,25 +39,18 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     
     %% Passband to baseband
-  
-    
+    data = s_passband.*(exp(-1i*2*pi*fc*t)/sqrt(2));
     
     %% LP-filter
     
-    [b,a] = butter(2,6500/22e3,'low');
+    [b,a] = butter(10,2*fc/fs,'low');
     
     %h=fvtool(b,a) %if you want to look at it
     
     Y = filter(b,a,data);
-    
-    
-    
-    %% Syncronization
-    
-    %% Demodulation
-    
-    
-    
+
+    %% Demodulation ????
+    message = conv(Y, pulse);
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
