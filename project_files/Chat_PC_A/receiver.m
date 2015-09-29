@@ -25,24 +25,30 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %                 desired eye diagram).
     %
 	%% Some parameters
-    load '../parameters.m'
-    RecordingTime = 6; %How long (in seconds) we will record sound
+    run('../parameters.m')
     
     %% Audio data collection 
     
     recording = audiorecorder(44000,8,1);
     record(recording);
-    T = timer('TimerFcn',@(~,~)disp('Test running'),'StartDelay',RecordingTime);
-    start(T)    %waiting for 'RecordingTime' seconds
-    wait(T)
+    message = zeros(1,1000) + 0.5;  %testing dummy
+    tic;
+    
+    while message(end) == 0.5; %marker condition
+        while toc < 1;         
+        end
+        pause(recording);
+        message = getaudiodata(recording,'uint8');        
+        resume(recording);
+    end    
     stop(recording);
-    data = getaudiodata(recording,'int8');
+    disp('Test OK!')
     
     
     %% Passband to baseband
     % Where Vt
-    ak = Yq*sqrt(2)*cos(2*pi*fc*t);
-    bk = Yq*sqrt(2)*sin(2*pi*fc*t);
+    %ak = Yq*sqrt(2)*cos(2*pi*fc*t);
+    %bk = Yq*sqrt(2)*sin(2*pi*fc*t);
     
     %% Syncronization
     
@@ -50,8 +56,8 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    bits_group = de2bi(message, m);
-    Xhat = buffer(bits_group, 1);
+    %bits_group = de2bi(message, m);
+    %Xhat = buffer(bits_group, 1);
     
     
 end
