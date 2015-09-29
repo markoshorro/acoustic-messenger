@@ -51,15 +51,14 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     Y = filter(b,a,data);
     
     
-    
     %% Syncronization
     
     %% Demodulation
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
-    Y=conv(si,Y);
+    %Y=conv(si,Y);
     
     
-    
+    Y = filter(si,1,Y)
     
     plot(Y)
     

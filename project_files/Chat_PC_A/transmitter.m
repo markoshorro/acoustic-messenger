@@ -21,7 +21,7 @@ function transmitter(packet, fc)
     symbols_up = upsample(symbols,round(sps)); % Space the symbols fsfd apart, to enable pulse shaping using conv.
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
     s=conv(si,symbols_up); 
-
+    
     % figure; subplot(2,1,1); plot(real(s), 'b');                         
     %                         title('real')
     %         subplot(2,1,2); plot(imag(s), 'b');                        
