@@ -16,7 +16,7 @@ function transmitter(packet, fc)
 
     bits_group = buffer(packet,m)';     % split 2 and 2 (the function reshape also works)
     messages = bi2de(bits_group)+1;     % call each combination a number
-    symbols = const(messages);          % match each number with our constellation
+    symbols = constQPSK(messages);          % match each number with our constellation
 
     symbols_up = upsample(symbols,round(sps)); % Space the symbols fsfd apart, to enable pulse shaping using conv.
     [si,~] = rtrcpuls(0.3, Tau, fs, span);

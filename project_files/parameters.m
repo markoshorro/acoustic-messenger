@@ -3,7 +3,7 @@
 %%
 
 %% Constellation
-const = [1+1i; -1+1i; -1-1i; 1-1i];
+constQPSK = [1+1i; -1+1i; -1-1i; 1-1i];
 
 %% Sampling freq
 fs = 44*10^3;
