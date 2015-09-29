@@ -40,13 +40,25 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     
     %% Passband to baseband
-    % Where Vt
-    ak = Yq*sqrt(2)*cos(2*pi*fc*t);
-    bk = Yq*sqrt(2)*sin(2*pi*fc*t);
+  
+    
+    
+    %% LP-filter
+    
+    [b,a] = butter(2,6500/22e3,'low');
+    
+    %h=fvtool(b,a) %if you want to look at it
+    
+    Y = filter(b,a,data);
+    
+    
     
     %% Syncronization
     
     %% Demodulation
+    
+    
+    
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
