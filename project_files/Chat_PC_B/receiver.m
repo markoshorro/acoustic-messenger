@@ -26,16 +26,23 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-    RecordingTime = 6; %How long (in seconds) we will record sound
+   
+     %% Audio data collection 
     
-    %% Hearing
     recording = audiorecorder(44000,8,1);
     record(recording);
-    T = timer('TimerFcn',@(~,~)disp('Test running'),'StartDelay',RecordingTime);
-    start(T)    %waiting for 'RecordingTime' seconds
-    wait(T)
-    stop(recording);
-    data = getaudiodata(recording,'int8');
+    message = zeros(1,1000) + 0.5;  %testing dummy
+    tic;
+    
+    while message(end) == 0.5; %marker condition
+        while toc < 1;         
+        end
+        pause(recording);
+        message = getaudiodata(recording,'uint8');        
+        resume(recording);
+        
+    end    
+    stop(recording);  
     
     
     %% Passband to baseband
@@ -62,11 +69,10 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     plot(Y)
     
-      
-    %% Symbol to bits
+     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    bits_group = de2bi(message, m);
-    Xhat = buffer(bits_group, 1);
-    
+    message = dec2bin(message)';
+    message = reshape(message,1,8*length(message));
+    Symbols = buffer(message, m)';
     
 end
