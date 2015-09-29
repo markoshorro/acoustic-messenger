@@ -40,10 +40,9 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         pause(recording);
         message = getaudiodata(recording,'uint8');        
         resume(recording);
+        
     end    
-    stop(recording);
-    disp('Test OK!')
-    
+    stop(recording);    
     
     %% Passband to baseband
     % Where Vt
@@ -56,8 +55,10 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    %bits_group = de2bi(message, m);
-    %Xhat = buffer(bits_group, 1);
+    message = dec2bin(message)';
+    message = reshape(message,1,8*length(message));
+    Symbols = buffer(message, m)';
+    
     
     
 end
