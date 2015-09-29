@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -40,15 +40,15 @@
     
     %% Passband to baseband
   
-data = s_passband.*(exp(-1i*2*pi*fc*t)/sqrt(2));
+    data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
     
     %% LP-filter
-    XX;
-    [b,a] = butter(2,6500/22e3,'low');
+    
+    [b,a] = butter(2,2*fc/fs,'low'); %fc/(fs/2) -> normalized fc
     
     %h=fvtool(b,a) %if you want to look at it
     
-    Y = filter(b,a,XX);
+    Y = filter(b,a,data);
     
     
     
@@ -57,6 +57,8 @@ data = s_passband.*(exp(-1i*2*pi*fc*t)/sqrt(2));
     %% Demodulation
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
     Y=conv(si,Y);
+    
+    
     
     
     plot(Y)
@@ -68,4 +70,4 @@ data = s_passband.*(exp(-1i*2*pi*fc*t)/sqrt(2));
     Xhat = buffer(bits_group, 1);
     
     
-%end
+end
