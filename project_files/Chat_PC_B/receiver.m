@@ -29,7 +29,6 @@
     RecordingTime = 6; %How long (in seconds) we will record sound
     
     %% Hearing
-    
     recording = audiorecorder(44000,8,1);
     record(recording);
     T = timer('TimerFcn',@(~,~)disp('Test running'),'StartDelay',RecordingTime);
@@ -41,9 +40,7 @@
     
     %% Passband to baseband
   
-    fc=7000;
-    t = t(1:length(s_tailness));
-    s_passband = real(s_tailness.*(sqrt(2)*exp(-1i*2*pi*fc*t)));
+data = s_passband.*(exp(-1i*2*pi*fc*t)/sqrt(2));
     
     %% LP-filter
     XX;
@@ -64,7 +61,7 @@
     
     plot(Y)
     
-    
+      
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
     bits_group = de2bi(message, m);
