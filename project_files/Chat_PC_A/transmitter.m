@@ -42,5 +42,6 @@ function transmitter(packet, fc)
     
     figure(2)
     plot(s_passband)
-    sound(s_passband,44e3)
+    sound(s_passband,44e3);
+  
 end

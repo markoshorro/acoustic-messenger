@@ -46,16 +46,20 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     message = dec2bin(message)';
     message = reshape(message,1,8*length(message));
+    %%
     
     Xhat = message;
    % scatterplot(Xhat)
     
     Xhat_dB = 20*log10(Xhat);
+    %plot(real(Xhat_dB))
+    
     [psd_Xhat, f_Xhat] =  pwelch(Xhat_dB,hamming(512),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
     field1 = 'p';
     field2 = 'f';
     psd = struct(field1,psd_Xhat,field2,f_Xhat);
    
+   %plot(f_Xhat,psd_Xhat)
     
     
     %% Passband to baseband
