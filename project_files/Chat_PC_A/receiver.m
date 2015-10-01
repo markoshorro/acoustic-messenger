@@ -47,8 +47,8 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %% Passband to baseband
     t = (0:1/length(message):1-1/length(message)).';
 
-    data = s_passband; %%%%%%%%%%%%%%%% just for testing
-    data = data.*(exp(-1i*2*pi*fc*t));
+    %data = s_passband; %%%%%%%%%%%%%%%% just for testing
+    data = message.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
