@@ -48,7 +48,14 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     message = reshape(message,1,8*length(message));
     
     Xhat = message;
-    scatterplot(Xhat)
+   % scatterplot(Xhat)
+    
+    Xhat_dB = 20*log10(Xhat);
+    [psd_Xhat, f_Xhat] =  pwelch(Xhat_dB,hamming(512),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
+    field1 = 'p';
+    field2 = 'f';
+    psd = struct(field1,psd_Xhat,field2,f_Xhat);
+   
     
     
     %% Passband to baseband
@@ -59,7 +66,13 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
     Y = conv(si, data);
     
+    
+    field3 = 'fsfd';
+    field4 = 'r';
+    eyed = struct(field3,sps,field4,Y);
+    
     %% Symbol to bits
+    const = []; %the samples (complex) 
     % we should have a 1D vector with values between [1,4]
     
     Symbols = buffer(message, m)';
