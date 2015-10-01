@@ -44,6 +44,13 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     end    
     stop(recording);  
     
+    message = dec2bin(message)';
+    message = reshape(message,1,8*length(message));
+    
+    Xhat = message;
+    scatterplot(Xhat)
+    
+    
     %% Passband to baseband
     data = s_passband; % just for testing
     data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
@@ -54,8 +61,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    message = dec2bin(message)';
-    message = reshape(message,1,8*length(message));
+    
     Symbols = buffer(message, m)';
     
 end

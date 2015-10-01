@@ -44,21 +44,24 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     end    
     stop(recording);    %stop recording after finding correct packet size
     
+    message = dec2bin(message)';
+    message = reshape(message,1,8*length(message));
+    
+    Xhat = message;
+    scatterplot(Xhat)
+    
+    
     %% Passband to baseband
-    % Where Vt
-    %ak = Yq*sqrt(2)*cos(2*pi*fc*t);
-    %bk = Yq*sqrt(2)*sin(2*pi*fc*t);
+    data = s_passband; % just for testing
+    data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
     
-    %% Syncronization
-    
-    %% Demodulation
+    %% Demodulation (MF)
+    [si,~] = rtrcpuls(0.3, Tau, fs, span);
+    Y = conv(si, data);
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    message = dec2bin(message)';       
-    message = reshape(message,1,8*length(message));
+    
     Symbols = buffer(message, m)';
-    
-    
     
 end
