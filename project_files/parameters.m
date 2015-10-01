@@ -3,7 +3,7 @@
 %%
 
 %% Constellation
-constQPSK = [1+1i; -1+1i; -1-1i; 1-1i];
+constQPSK = [1+1i; 1-1i; -1+1i; -1-1i]/sqrt(2);
 
 %% Sampling freq
 fs = 44*10^3;
@@ -32,3 +32,6 @@ span=6;
 
 %% Samples per symbol
 sps=fs/Rs;
+
+%% Number of symbols per packet
+Ns = N/m;

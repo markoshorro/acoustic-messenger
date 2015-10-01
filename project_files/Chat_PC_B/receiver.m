@@ -44,32 +44,15 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     end    
     stop(recording);  
     
-    
     %% Passband to baseband
-  
+    data = s_passband; % just for testing
     data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
     
-    %% LP-filter
-    
-    [b,a] = butter(2,2*fc/fs,'low'); %fc/(fs/2) -> normalized fc
-    
-    %h=fvtool(b,a) %if you want to look at it
-    
-    Y = filter(b,a,data);
-    
-    
-    %% Syncronization
-    
-    %% Demodulation
+    %% Demodulation (MF)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
-    %Y=conv(si,Y);
+    Y = conv(si, data);
     
-    
-    Y = filter(si,1,Y)
-    
-    plot(Y)
-    
-     %% Symbol to bits
+    %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
     message = dec2bin(message)';
     message = reshape(message,1,8*length(message));
