@@ -26,29 +26,28 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-   
-     %% Audio data collection 
+    fc = 5000;
+
+    %% Audio data collection
+    message = zeros(1,1000) + 0.5;          %testing dummy
+    recording = audiorecorder(44000,8,1);   %Creating recording Object
+    record(recording);                      %start recording
+    tic;        %start counter, to keep track of recording time of each
+                %recording segment
     
-    recording = audiorecorder(44000,8,1);
-    record(recording);
-    message = zeros(1,1000) + 0.5;  %testing dummy
-    tic;
-    
-    while message(end) == 0.5; %marker condition
-        while toc < 1;         
-        end
-        pause(recording);
-        message = getaudiodata(recording,'uint8');        
-        resume(recording);
-        
+    while message(end) == 0.5;  %marker condition (dummy)
+        while toc < 1;          %waits for 'toc' seconds to record     
+        end                 
+        pause(recording);       %Pause recording
+        message = getaudiodata(recording,'single'); %fetch data
+        resume(recording);                         
     end    
-    stop(recording);  
-    
-    message = dec2bin(message)';
-    message = reshape(message,1,8*length(message));
+    stop(recording);    %stop recording after finding correct packet size
     
     %% Passband to baseband
-    data = s_passband; % just for testing
+    t = (0:1/length(message):1-1/length(message)).';
+
+    data = s_passband; %%%%%%%%%%%%%%%% just for testing
     data = data.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
@@ -69,7 +68,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     bits_group = de2bi(symbols_rec);
     %% XHAT output
-    Xhat=reshape(bits_group.',[1,m*length(bits_group)]);
+    Xhat = reshape(bits_group.',[1,m*length(bits_group)]);
     
     %% PSD output
     Xhat_dB = 20*log10(Xhat);

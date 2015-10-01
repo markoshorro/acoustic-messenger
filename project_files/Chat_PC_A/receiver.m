@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -27,10 +27,8 @@
 	%% Some parameters
     run('../parameters.m')
     fc = 5000;
-   
-    
-    %% Audio data collection 
-    
+
+    %% Audio data collection
     message = zeros(1,1000) + 0.5;          %testing dummy
     recording = audiorecorder(44000,8,1);   %Creating recording Object
     record(recording);                      %start recording
@@ -46,31 +44,42 @@
     end    
     stop(recording);    %stop recording after finding correct packet size
     
-    %message = dec2bin(message)';
-    %message = reshape(message,1,8*length(message));
-    
-    Xhat = message;
-    %scatterplot(Xhat)    
-    
     %% Passband to baseband
-    t = (0:1/length(Xhat):1-1/length(Xhat)).';
-    
-    %data = s_passband; % just for testing
-    data = Xhat.*(exp(-1i*2*pi*fc*t)/sqrt(2));
+    t = (0:1/length(message):1-1/length(message)).';
+
+    data = s_passband; %%%%%%%%%%%%%%%% just for testing
+    data = data.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
-    Y = conv(si, data);
+    yt = conv(si, data);
+    yt = yt(sps*span:end-sps*span);
     
-    figure(1); plot(real(Y))
-    figure(2); plot(downsample(real(Y),200))
-    scatterplot(downsample(Y,200))
+    %% Decision: correct for QPSK and 8PSK
+    const = downsample(yt, sps);
+    yangle = angle(const);
+    constangle = angle(constQPSK).';
+    index_symb=zeros(length(const),1);
+    for i=1:length(yhat)
+        [~,x] = min(abs(yangle(i)-constangle));
+        index_symb(i)=x;
+    end;
+    symbols_rec = index_symb-1;
     
-    %% Symbol to bits
-    % we should have a 1D vector with values between [1,4]
+    bits_group = de2bi(symbols_rec);
+    %% XHAT output
+    Xhat = reshape(bits_group.',[1,m*length(bits_group)]);
     
-    %symbols = buffer(message, m)';
-    %symbols = bin2dec(symbols);
-    %Xhat = constQPSK(symbols + 1);
-    %scatterplot(Xhat)
-%end
+    %% PSD output
+    Xhat_dB = 20*log10(Xhat);
+    [psd_Xhat, f_Xhat] =  pwelch(Xhat_dB,hamming(512),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
+    field1 = 'p';
+    field2 = 'f';
+    psd = struct(field1,psd_Xhat,field2,f_Xhat);
+    
+    %% eyed output
+    field3 = 'fsfd';
+    field4 = 'r';
+    eyed = struct(field3,sps,field4,Y);
+    
+end
