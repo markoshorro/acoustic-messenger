@@ -46,39 +46,41 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     message = dec2bin(message)';
     message = reshape(message,1,8*length(message));
-    %%
     
-    Xhat = message;
-   % scatterplot(Xhat)
+    %% Passband to baseband
+    data = s_passband; % just for testing
+    data = data.*(exp(-1i*2*pi*fc*t));
     
+    %% Demodulation (MF)
+    [si,~] = rtrcpuls(0.3, Tau, fs, span);
+    yt = conv(si, data);
+    yt = yt(sps*span:end-sps*span);
+    
+    %% Decision: correct for QPSK and 8PSK
+    const = downsample(yt, sps);
+    yangle = angle(const);
+    constangle = angle(constQPSK).';
+    index_symb=zeros(length(const),1);
+    for i=1:length(yhat)
+        [~,x] = min(abs(yangle(i)-constangle));
+        index_symb(i)=x;
+    end;
+    symbols_rec = index_symb-1;
+    
+    bits_group = de2bi(symbols_rec);
+    %% XHAT output
+    Xhat=reshape(bits_group.',[1,m*length(bits_group)]);
+    
+    %% PSD output
     Xhat_dB = 20*log10(Xhat);
-    %plot(real(Xhat_dB))
-    
     [psd_Xhat, f_Xhat] =  pwelch(Xhat_dB,hamming(512),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
     field1 = 'p';
     field2 = 'f';
     psd = struct(field1,psd_Xhat,field2,f_Xhat);
-   
-   %plot(f_Xhat,psd_Xhat)
     
-    
-    %% Passband to baseband
-    data = s_passband; % just for testing
-    data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
-    
-    %% Demodulation (MF)
-    [si,~] = rtrcpuls(0.3, Tau, fs, span);
-    Y = conv(si, data);
-    
-    
+    %% eyed output
     field3 = 'fsfd';
     field4 = 'r';
     eyed = struct(field3,sps,field4,Y);
-    
-    %% Symbol to bits
-    const = []; %the samples (complex) 
-    % we should have a 1D vector with values between [1,4]
-    
-    Symbols = buffer(message, m)';
     
 end
