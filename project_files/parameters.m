@@ -13,13 +13,13 @@ Ts = 1/fs;
 Rb = 440;
 
 %% Number of bits to transmit
-N = 432;
+N = 32;
 
 %% QSPK, 4 different options
 m = 2;
 
 %% Alphabet
-M = 4; 
+M = m^2; 
 
 %% Symbol rate
 Rs = Rb/m;
