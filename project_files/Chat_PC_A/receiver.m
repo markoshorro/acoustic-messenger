@@ -1,4 +1,4 @@
-function [Xhat, psd, const, eyed] = receiver(tout,fc)
+%function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -26,6 +26,8 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
+    fc = 5000;
+   
     
     %% Audio data collection 
     
@@ -39,29 +41,36 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         while toc < 1;          %waits for 'toc' seconds to record     
         end                 
         pause(recording);       %Pause recording
-        message = getaudiodata(recording,'uint8'); %fetch data
+        message = getaudiodata(recording,'single'); %fetch data
         resume(recording);                         
     end    
     stop(recording);    %stop recording after finding correct packet size
     
-    message = dec2bin(message)';
-    message = reshape(message,1,8*length(message));
+    %message = dec2bin(message)';
+    %message = reshape(message,1,8*length(message));
     
     Xhat = message;
-    scatterplot(Xhat)
-    
+    %scatterplot(Xhat)    
     
     %% Passband to baseband
-    data = s_passband; % just for testing
-    data = real(data.*(exp(-1i*2*pi*fc*t)/sqrt(2)));
+    t = (0:1/length(Xhat):1-1/length(Xhat)).';
+    
+    %data = s_passband; % just for testing
+    data = Xhat.*(exp(-1i*2*pi*fc*t)/sqrt(2));
     
     %% Demodulation (MF)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
     Y = conv(si, data);
     
+    figure(1); plot(real(Y))
+    figure(2); plot(downsample(real(Y),200))
+    scatterplot(downsample(Y,200))
+    
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
     
-    Symbols = buffer(message, m)';
-    
-end
+    %symbols = buffer(message, m)';
+    %symbols = bin2dec(symbols);
+    %Xhat = constQPSK(symbols + 1);
+    %scatterplot(Xhat)
+%end
