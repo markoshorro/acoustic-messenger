@@ -29,20 +29,20 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Audio data collection 
     
-    recording = audiorecorder(44000,8,1);
-    record(recording);
-    message = zeros(1,1000) + 0.5;  %testing dummy
-    tic;
+    message = zeros(1,1000) + 0.5;          %testing dummy
+    recording = audiorecorder(44000,8,1);   %Creating recording Object
+    record(recording);                      %start recording
+    tic;        %start counter, to keep track of recording time of each
+                %recording segment
     
-    while message(end) == 0.5; %marker condition
-        while toc < 1;         
-        end
-        pause(recording);
-        message = getaudiodata(recording,'uint8');        
-        resume(recording);
-        
+    while message(end) == 0.5;  %marker condition (dummy)
+        while toc < 1;          %waits for 'toc' seconds to record     
+        end                 
+        pause(recording);       %Pause recording
+        message = getaudiodata(recording,'uint8'); %fetch data
+        resume(recording);                         
     end    
-    stop(recording);    
+    stop(recording);    %stop recording after finding correct packet size
     
     %% Passband to baseband
     % Where Vt
@@ -55,7 +55,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Symbol to bits
     % we should have a 1D vector with values between [1,4]
-    message = dec2bin(message)';
+    message = dec2bin(message)';       
     message = reshape(message,1,8*length(message));
     Symbols = buffer(message, m)';
     
