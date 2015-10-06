@@ -26,7 +26,6 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-    fc = 5000;
 
     %% Audio data collection
     message = zeros(1,1000) + 0.5;          %testing dummy
@@ -36,7 +35,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
                 %recording segment
     
     while message(end) == 0.5;  %marker condition (dummy)
-        while toc < 1;          %waits for 'toc' seconds to record     
+        while toc < 2;          %waits for 'toc' seconds to record     
         end                 
         pause(recording);       %Pause recording
         message = getaudiodata(recording,'single'); %fetch data
@@ -47,7 +46,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %% Passband to baseband
     t = (0:1/length(message):1-1/length(message)).';
 
-    data = s_passband; %%%%%%%%%%%%%%%% just for testing
+    data = message; %%%%%%%%%%%%%%%% just for testing
     data = data.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
@@ -60,7 +59,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     yangle = angle(const);
     constangle = angle(constQPSK).';
     index_symb=zeros(length(const),1);
-    for i=1:length(yhat)
+    for i=1:length(const)
         [~,x] = min(abs(yangle(i)-constangle));
         index_symb(i)=x;
     end;
@@ -70,9 +69,20 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %% XHAT output
     Xhat = reshape(bits_group.',[1,m*length(bits_group)]);
     
+    Xhat
+    const
+    figure(14);
+    subplot(2,1,1);
+    plot(real(yt));
+    subplot(2,1,2);
+    plot(imag(yt));
+    
+    
     %% PSD output
     Xhat_dB = 20*log10(Xhat);
-    [psd_Xhat, f_Xhat] =  pwelch(Xhat_dB,hamming(512),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
+    [psd_Xhat, f_Xhat] = pwelch(Xhat_dB,fs); %psd_Xhat needs to be normalized so the max reaches 0 dB
+    psd_Xhat
+    f_Xhat
     field1 = 'p';
     field2 = 'f';
     psd = struct(field1,psd_Xhat,field2,f_Xhat);
@@ -80,6 +90,6 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %% eyed output
     field3 = 'fsfd';
     field4 = 'r';
-    eyed = struct(field3,sps,field4,Y);
+    eyed = struct(field4,yt,field3,sps);
     
 end
