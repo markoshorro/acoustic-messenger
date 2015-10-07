@@ -1,4 +1,4 @@
-%function transmitter(packet, fc)
+function transmitter(packet, fc)
 	%% TRANSMITTER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -46,4 +46,4 @@
     s_passband = s_passband/max(s_passband);
     sound(s_passband,44e3);
   
-%end
+end
