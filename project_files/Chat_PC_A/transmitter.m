@@ -13,7 +13,7 @@
     run('../parameters.m');
     
     pilot = ones(1,10);
-    packet = [pilot randsrc(1,N,[1 1])];        % Just for test
+    packet = [pilot randsrc(1,N,[1 0])];        % Just for test
     fc = 4000;
 
     % Split in m columns
@@ -25,7 +25,7 @@
     
     % Match barker code with BPSK constellation
     symbolsBarker = constBPSK(symbBarker);
-    symbols = [symbolsBarker'; symbols];
+    symbols = [symbolsBarker.'; symbols];
     
     % Space the symbols fsfd apart, to enable pulse shaping using conv
     symbolsUp = upsample(symbols, round(sps));
@@ -38,7 +38,7 @@
     sTailless = s(sps*span:end-sps*span);
     
     % Converting onto passband signal
-    t = ((1:length(sTailless))/fs).';
+    t = ((1:length(sTailless))/fs);
     sPassband = real(sTailless.*(exp(1i*2*pi*fc*t)));
 
     % Normalized values
@@ -48,9 +48,18 @@
     sound(sPassband, fs);
 
     %% DEBUGGING
-    figure; subplot(2,1,1); plot(real(s), 'b');                         
+    figure(1); subplot(2,1,1); plot(real(sTailless), 'b');                         
                              title('real')
-             subplot(2,1,2); plot(imag(s), 'b');                        
+             subplot(2,1,2); plot(imag(sTailless), 'r');                        
+                             title('imag')
+    figure(2); subplot(2,1,1); plot(real(s), 'b');                         
+                             title('real')
+             subplot(2,1,2); plot(imag(s), 'r');                        
+                             title('imag')
+
+    figure(3); subplot(2,1,1); plot(real(sPassband), 'b');                         
+                             title('real')
+             subplot(2,1,2); plot(imag(sPassband), 'r');                        
                              title('imag')
 %     figure(1);
 %     pwelch(sPassband,hamming(512),[],[],fs,'centered');

@@ -26,67 +26,90 @@
     %
 	%% Some parameters
     run('../parameters.m')
-    fc = 5000;      %to be able to run wihtout function
+        
+    % Testing
+    fc = 4000;
+    
     %% Audio data collection
-    %message = zeros(1,1000) + 0.5;          %testing dummy
-    recording = audiorecorder(44000,8,1);   %Creating recording Object
+    channels = 1;   
+    recordBits = 8;
+    
+    % Preamble stuff
+    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
+    symbolsBarker = constBPSK(symbBarker);
+    pulseBarker = conv(upsample(symbolsBarker, round(sps)), si);
+    t = ((1:length(pulseBarker))/fs);
+    barkerPass = real(pulseBarker.*(exp(1i*2*pi*fc*t)));
+    barkerPass = barkerPass/max(barkerPass);
+
+    figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
+                         title('real')
+         subplot(2,1,2); plot(imag(barkerPass), 'r');                        
+                         title('imag')
+    
+    message = zeros(1,1000) + 0.5;          %testing dummy
+    recording = audiorecorder(fs, recordBits, channels);   %Creating recording Object
     record(recording);                      %start recording
     tic;        %start counter, to keep track of recording time of each
                 %recording segment
-    
-    %while message(end) == 0.5;  %marker condition (dummy)
+%     found = false;
+%     while (found==false)
+%         % We have to find the preamble
+%         r = getaudiodata(recording, 'single');
+%         
+%         % 
+%         
+%         % If the preamble has not been found, return
+%         if (tout<toc)
+%             Xhat=[]; psd=[]; const=[]; eyed=[];
+%             return;
+%         end     
+%     end
+        
+                
+%     while message(end) == 0.5;  %marker condition (dummy)
         while toc < 1;          %waits for 'toc' seconds to record     
         end                 
-    %    pause(recording);       %Pause recording
-    %    message = getaudiodata(recording,'single'); %fetch data
-    %    resume(recording);                         
-    %end
+%        pause(recording);       %Pause recording
+%        message = getaudiodata(recording,'single'); %fetch data
+%        resume(recording);                         
+%     end
     message = getaudiodata(recording,'single');
     stop(recording);    %stop recording after finding correct packet size
     
+    corr = conv(message, fliplr(barkerPass));
+    plot(corr);
+    
     %% Passband to baseband
     t = ((1:length(message))/fs).';
-
-    data = message; % just for testing
-    data = data.*(exp(-1i*2*pi*fc*t));
+    data = message.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
-    [si,~] = rtrcpuls(0.3, Tau, fs, span);
     yt = conv(si, data);
     yt = yt(sps*span:end-sps*span);
     
     %% Decision: correct for QPSK and 8PSK
     const = downsample(yt, sps);
     yangle = angle(const);
-    constangle = angle(constQPSK).';
-    index_symb=zeros(length(const),1);
+    constAngle = angle(constQPSK).';
+    indexSymb=zeros(length(const),1);
     for i=1:length(const)
-        [~,x] = min(abs(yangle(i)-constangle));
-        index_symb(i)=x;
+        [~,x] = min(abs(yangle(i)-constAngle));
+        indexSymb(i)=x;
     end;
-    symbols_rec = index_symb-1;
+    symbolsRec = indexSymb-1;
     
-    bits_group = de2bi(symbols_rec);
+    bitsGroup = de2bi(symbolsRec);
+    
     %% XHAT output
-    Xhat = reshape(bits_group.',[1,m*length(bits_group)]);
-    
-%     figure(14);
-%     subplot(2,1,1);
-%     plot(real(yt));
-%     subplot(2,1,2);
-%     plot(imag(yt));
-    
+    Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
     
     %% PSD output
-    Xhat_dB = 20*log10(const);
-    [psd_Xhat, f_Xhat] = pwelch(abs(Xhat_dB),hamming(128),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
-    field1 = 'p';
-    field2 = 'f';
-    psd = struct(field1,psd_Xhat,field2,f_Xhat);
+    XhatdB = 20*log10(const);
+    [psdXhat, fXhat] = pwelch(abs(XhatdB),...
+                                hamming(128),[],[],fs,'twosided');
+    psd = struct('p',psdXhat,'f',fXhat);
     
     %% eyed output
-    field3 = 'fsfd';
-    field4 = 'r';
-    eyed = struct(field4,yt,field3,sps);
-    
+    eyed = struct('r',yt,'fsfd',sps);
 %end

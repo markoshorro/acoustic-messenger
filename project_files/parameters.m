@@ -23,7 +23,7 @@ Ts = 1/fs;
 Rb = 440;
 
 %% Number of bits to transmit
-N = 432;
+N = 16;
 
 %% QSPK, 4 different options
 m = 2;
