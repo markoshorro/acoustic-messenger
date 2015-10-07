@@ -34,8 +34,7 @@ function transmitter(packet, fc)
 %              subplot(2,1,2); plot(imag(s_tailness), 'b');                        
 %                              title('imag')
 
-    t = (0:1/fs:1-1/fs).';
-    t = t(1:length(s_tailness));
+    t = ((1:length(s_tailness))/fs).';
                       
     s_passband = real(s_tailness.*(sqrt(2)*exp(1i*2*pi*fc*t)));
 %     figure(1);

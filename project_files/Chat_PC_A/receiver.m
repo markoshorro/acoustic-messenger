@@ -1,4 +1,4 @@
-function [Xhat, psd, const, eyed] = receiver(tout,fc)
+%function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -28,19 +28,20 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     run('../parameters.m')
     fc = 5000;
     %% Audio data collection
-    message = zeros(1,1000) + 0.5;          %testing dummy
+    %message = zeros(1,1000) + 0.5;          %testing dummy
     recording = audiorecorder(44000,8,1);   %Creating recording Object
     record(recording);                      %start recording
     tic;        %start counter, to keep track of recording time of each
                 %recording segment
     
-    while message(end) == 0.5;  %marker condition (dummy)
+    %while message(end) == 0.5;  %marker condition (dummy)
         while toc < 1;          %waits for 'toc' seconds to record     
         end                 
-        pause(recording);       %Pause recording
-        message = getaudiodata(recording,'single'); %fetch data
-        resume(recording);                         
-    end    
+    %    pause(recording);       %Pause recording
+    %    message = getaudiodata(recording,'single'); %fetch data
+    %    resume(recording);                         
+    %end
+    message = getaudiodata(recording,'single');
     stop(recording);    %stop recording after finding correct packet size
     
     %% Passband to baseband
@@ -88,4 +89,4 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     field4 = 'r';
     eyed = struct(field4,yt,field3,sps);
     
-end
+%end
