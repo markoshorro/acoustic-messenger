@@ -1,4 +1,4 @@
-function transmitter(packet, fc)
+%function transmitter( packet, fc )
 	%% TRANSMITTER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -7,47 +7,58 @@ function transmitter(packet, fc)
     % INPUT:  packet  - vector with data
     %         fc    - carrier frequency
     %
-    % OUTPUT: SOUND to the speaker (
+    % OUTPUT: SOUND to the speaker
     %
     
     run('../parameters.m');
     
-    barker = [1 1 1 0 0 1 0] + 1;
-    pilot = zeros(1,10);
-    packet = randsrc(1,N,[0 1]);        % Just for test
-    packet = [pilot packet];
-    fc = 5000;
+    pilot = ones(1,10);
+    packet = [pilot randsrc(1,N,[1 1])];        % Just for test
+    fc = 4000;
 
-    bits_group = buffer(packet,m)';     % split 2 and 2 (the function reshape also works)
-    messages = bi2de(bits_group)+1;     % call each combination a number
-    symbols = constQPSK(messages);          % match each number with our constellation
-    symbolsBarker = constBPSK(barker);
-    symbols = [symbolsBarker'; symbols];
-
-    symbols_up = upsample(symbols,round(sps)); % Space the symbols fsfd apart, to enable pulse shaping using conv.
-    [si,~] = rtrcpuls(0.3, Tau, fs, span);
-    s=conv(si,symbols_up); 
+    % Split in m columns
+    bitsGroup = buffer(packet,m)';     
+    messages = bi2de(bitsGroup)+1;
     
-%     figure; subplot(2,1,1); plot(real(s), 'b');                         
-%                              title('real')
-%              subplot(2,1,2); plot(imag(s), 'b');                        
-%                              title('imag')
-    s_tailness = s(sps*span:end-sps*span);
+    % Match each number with our constellation
+    symbols = constQPSK(messages);
+    
+    % Match barker code with BPSK constellation
+    symbolsBarker = constBPSK(symbBarker);
+    symbols = [symbolsBarker'; symbols];
+    
+    % Space the symbols fsfd apart, to enable pulse shaping using conv
+    symbolsUp = upsample(symbols, round(sps));
+        
+    % Pulse convolution
+    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
+    s = conv(si, symbolsUp); 
+    
+    % Getting convoluted signal without heads nor tails
+    sTailless = s(sps*span:end-sps*span);
+    
+    % Converting onto passband signal
+    t = ((1:length(sTailless))/fs).';
+    sPassband = real(sTailless.*(exp(1i*2*pi*fc*t)));
 
-%     figure; subplot(2,1,1); plot(real(s_tailness), 'b');                         
-%                              title('real')
-%              subplot(2,1,2); plot(imag(s_tailness), 'b');                        
-%                              title('imag')
+    % Normalized values
+    sPassband = sPassband/max(sPassband);
+    
+    % Output through the speaker
+    sound(sPassband, fs);
 
-    t = ((1:length(s_tailness))/fs).';
-                      
-    s_passband = real(s_tailness.*(sqrt(2)*exp(1i*2*pi*fc*t)));
+    %% DEBUGGING
+    figure; subplot(2,1,1); plot(real(s), 'b');                         
+                             title('real')
+             subplot(2,1,2); plot(imag(s), 'b');                        
+                             title('imag')
 %     figure(1);
-%     pwelch(s_passband,hamming(512),[],[],fs,'centered');
+%     pwelch(sPassband,hamming(512),[],[],fs,'centered');
 %     
 %     figure(2)
-%     plot(s_passband)
-    s_passband = s_passband/max(s_passband);
-    sound(s_passband,44e3);
-  
-end
+%     plot(sPassband)
+%     figure; subplot(2,1,1); plot(real(sTailness), 'b');                         
+%                              title('real')
+%              subplot(2,1,2); plot(imag(sTailness), 'b');                        
+%                              title('imag')
+%end
