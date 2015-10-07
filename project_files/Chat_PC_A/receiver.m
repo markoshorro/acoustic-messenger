@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -44,10 +44,10 @@
     stop(recording);    %stop recording after finding correct packet size
     
     %% Passband to baseband
-    t_r = (0:1/length(message):1-1/length(message)).';
+    t = ((1:length(message))/fs).';
 
     data = message; %%%%%%%%%%%%%%%% just for testing
-    data = data.*(exp(-1i*2*pi*fc*t_r));
+    data = data.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
@@ -88,4 +88,4 @@
     field4 = 'r';
     eyed = struct(field4,yt,field3,sps);
     
-%end
+end

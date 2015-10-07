@@ -26,7 +26,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-
+    fc = 5000;
     %% Audio data collection
     message = zeros(1,1000) + 0.5;          %testing dummy
     recording = audiorecorder(44000,8,1);   %Creating recording Object
@@ -35,7 +35,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
                 %recording segment
     
     while message(end) == 0.5;  %marker condition (dummy)
-        while toc < 2;          %waits for 'toc' seconds to record     
+        while toc < 1;          %waits for 'toc' seconds to record     
         end                 
         pause(recording);       %Pause recording
         message = getaudiodata(recording,'single'); %fetch data
@@ -44,7 +44,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     stop(recording);    %stop recording after finding correct packet size
     
     %% Passband to baseband
-    t = (0:1/length(message):1-1/length(message)).';
+    t = ((1:length(message))/fs).';
 
     data = message; %%%%%%%%%%%%%%%% just for testing
     data = data.*(exp(-1i*2*pi*fc*t));
@@ -69,20 +69,16 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %% XHAT output
     Xhat = reshape(bits_group.',[1,m*length(bits_group)]);
     
-    Xhat
-    const
-    figure(14);
-    subplot(2,1,1);
-    plot(real(yt));
-    subplot(2,1,2);
-    plot(imag(yt));
+%     figure(14);
+%     subplot(2,1,1);
+%     plot(real(yt));
+%     subplot(2,1,2);
+%     plot(imag(yt));
     
     
     %% PSD output
-    Xhat_dB = 20*log10(Xhat);
-    [psd_Xhat, f_Xhat] = pwelch(Xhat_dB,fs); %psd_Xhat needs to be normalized so the max reaches 0 dB
-    psd_Xhat
-    f_Xhat
+    Xhat_dB = 20*log10(const);
+    [psd_Xhat, f_Xhat] = pwelch(abs(Xhat_dB),hamming(128),[],[],fs,'centered'); %psd_Xhat needs to be normalized so the max reaches 0 dB
     field1 = 'p';
     field2 = 'f';
     psd = struct(field1,psd_Xhat,field2,f_Xhat);

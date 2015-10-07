@@ -1,4 +1,4 @@
-function transmitter(packet, fc)
+%function transmitter(packet, fc)
 	%% TRANSMITTER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -12,7 +12,8 @@ function transmitter(packet, fc)
     
     run('../parameters.m');
     
-%     packet = randsrc(1,N,[0 1]);        % Just for test
+    packet = randsrc(1,N,[0 1]);        % Just for test
+    fc=5000;
 
     bits_group = buffer(packet,m)';     % split 2 and 2 (the function reshape also works)
     messages = bi2de(bits_group)+1;     % call each combination a number
@@ -33,7 +34,7 @@ function transmitter(packet, fc)
 %              subplot(2,1,2); plot(imag(s_tailness), 'b');                        
 %                              title('imag')
 
-    t = (0:1/fs:((length(symbols)/216)-1/fs)).';
+    t = (0:1/fs:1-1/fs).';
     t = t(1:length(s_tailness));
                       
     s_passband = real(s_tailness.*(sqrt(2)*exp(1i*2*pi*fc*t)));
@@ -45,4 +46,4 @@ function transmitter(packet, fc)
     s_passband = s_passband/max(s_passband);
     sound(s_passband,44e3);
   
-end
+%end
