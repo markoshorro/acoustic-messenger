@@ -11,9 +11,9 @@
     %
     
     run('../parameters.m');
-    
+    close all;
     pilot = ones(1,10);
-    packet = [pilot randsrc(1,N,[1 0])];        % Just for test
+    packet = [pilot randsrc(1,N,[1 1])];        % Just for test
     fc = 4000;
 
     % Split in m columns
@@ -38,7 +38,7 @@
     sTailless = s(sps*span:end-sps*span);
     
     % Converting onto passband signal
-    t = ((1:length(sTailless))/fs);
+    t = ((1:length(sTailless))/fs).';
     sPassband = real(sTailless.*(exp(1i*2*pi*fc*t)));
 
     % Normalized values
