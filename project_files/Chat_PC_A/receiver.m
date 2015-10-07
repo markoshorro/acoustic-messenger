@@ -26,7 +26,7 @@
     %
 	%% Some parameters
     run('../parameters.m')
-    fc = 5000;
+    fc = 5000;      %to be able to run wihtout function
     %% Audio data collection
     %message = zeros(1,1000) + 0.5;          %testing dummy
     recording = audiorecorder(44000,8,1);   %Creating recording Object
@@ -47,7 +47,7 @@
     %% Passband to baseband
     t = ((1:length(message))/fs).';
 
-    data = message; %%%%%%%%%%%%%%%% just for testing
+    data = message; % just for testing
     data = data.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)

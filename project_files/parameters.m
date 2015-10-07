@@ -1,9 +1,11 @@
 %% PARAMETERS
 % Just the collection of parameters in common for Rx and Tx
-%%
+%% Preamble
+barker = [1 1 1 0 0 1 0];
 
 %% Constellation
 constQPSK = [1+1i; 1-1i; -1+1i; -1-1i]/sqrt(2);
+constBPSK = [1,-1]/sqrt(2);
 
 %% Sampling freq
 fs = 44*10^3;

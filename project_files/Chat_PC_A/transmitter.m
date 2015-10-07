@@ -12,12 +12,17 @@ function transmitter(packet, fc)
     
     run('../parameters.m');
     
+    barker = [1 1 1 0 0 1 0] + 1;
+    pilot = zeros(1,10);
     packet = randsrc(1,N,[0 1]);        % Just for test
-    fc=5000;
+    packet = [pilot packet];
+    fc = 5000;
 
     bits_group = buffer(packet,m)';     % split 2 and 2 (the function reshape also works)
     messages = bi2de(bits_group)+1;     % call each combination a number
     symbols = constQPSK(messages);          % match each number with our constellation
+    symbolsBarker = constBPSK(barker);
+    symbols = [symbolsBarker'; symbols];
 
     symbols_up = upsample(symbols,round(sps)); % Space the symbols fsfd apart, to enable pulse shaping using conv.
     [si,~] = rtrcpuls(0.3, Tau, fs, span);
