@@ -26,13 +26,13 @@
     %
 	%% Some parameters
     run('../parameters.m')
-        
+    
     % Testing
     fc = 4000;
     
     %% Audio data collection
     channels = 1;   
-    recordBits = 8;
+    recordBits = 16; % WHAT ABOUT THIS? 8 or 16 bits? Should we ask?
     
     % Preamble stuff
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
@@ -42,25 +42,31 @@
     barkerPass = real(pulseBarker.*(exp(1i*2*pi*fc*t)));
     barkerPass = barkerPass/max(barkerPass);
 
-    figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
-                         title('real')
-         subplot(2,1,2); plot(imag(barkerPass), 'r');                        
-                         title('imag')
+%     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
+%                          title('real')
+%          subplot(2,1,2); plot(imag(barkerPass), 'r');                        
+%                          title('imag')
+%                                                
+%     figure(23); subplot(2,1,1); plot(real(pulseBarker), 'b');                         
+%                          title('real')
+%          subplot(2,1,2); plot(imag(pulseBarker), 'r');                        
+%                          title('imag')
     
-%     message = zeros(1,1000) + 0.5;          %testing dummy
-    recording = audiorecorder(fs, recordBits, channels);   %Creating recording Object
-    record(recording);                      %start recording
-    tic;        %start counter, to keep track of recording time of each
-                %recording segment
-                
+%     message = zeros(1,1000) + 0.5;  % testing dummy
+    recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
+    record(recording);              % start recording
+    tic;                            % start counter, to keep track of recording 
+                                    %  time of each recording segment
+    %% @TODO
+    % RECORDING AUDIO! 
 %     found = false;
 %     while (found==false)
-%         % We have to find the preamble
+%         % Getting data from mic
 %         r = getaudiodata(recording, 'single');
+%
+%         % Finding the preamble @TODO
 %         
-%         % 
-%         
-%         % If the preamble has not been found, return
+%         % If the preamble has not been found in tout sec, return
 %         if (tout<toc)
 %             Xhat=[]; psd=[]; const=[]; eyed=[];
 %             return;
@@ -68,17 +74,19 @@
 %     end
         
                 
-%     while message(end) == 0.5;  %marker condition (dummy)
-        while toc < 1;            %waits for 'toc' seconds to record     
+%     while message(end) == 0.5;    % marker condition (dummy)
+        while toc < 1;              % waits for 'toc' seconds to record     
         end                 
-%        pause(recording);        %Pause recording
+%        pause(recording);          % Pause recording
 %        message = getaudiodata(recording,'single'); %fetch data
 %        resume(recording);                         
 %     end
     message = getaudiodata(recording,'single');
-    stop(recording);    %stop recording after finding correct packet size
+    stop(recording);                % Stop recording after finding correct packet size
     
-    corr = conv(message, fliplr(barkerPass));
+    % TO TRY -> this should get the peak value
+    corr = conv(message, fliplr(barkerPass(sps*span:end-sps*span)));
+    figure(11);
     plot(corr);
     
     %% Passband to baseband
@@ -86,18 +94,24 @@
     data = message.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
-    yt = conv(si, data);
+    yt = conv(si, data);            % Convolution between received signal and rtrc pulse
     yt = yt(sps*span:end-sps*span);
     
+%     figure(111);
+%     subplot(2,1,1);
+%     plot(real(yt));
+%     subplot(2,1,2);
+%     plot(imag(yt));
+%     
     %% Decision: correct for QPSK and 8PSK
-    const = downsample(yt, sps);
-    yangle = angle(const);
-    constAngle = angle(constQPSK).';
-    indexSymb = zeros(length(const),1);
+    const = downsample(yt, sps);        % Downsampling
+    scatterplot(const);                 % Plotting Constellations from received signal
+    constAngle = angle(const);          % Getting angles from received signal constellation
+    indexSymb = zeros(length(const),1); % Declaration before for-loop
     
-    for i = 1:length(const)
-        [~,x] = min(abs(yangle(i)-constAngle));
-        indexSymb(i) = x;
+    for i = 1:length(const)             % @TODO: Somehow remove for-loop for more efficiency?
+        [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
+        indexSymb(i) = x;               % Matching each symbol with correct constellation
     end;
     
     symbolsRec = indexSymb-1;
@@ -115,4 +129,4 @@
     
     %% eyed output
     eyed = struct('r',yt,'fsfd',sps);
-end
+%end
