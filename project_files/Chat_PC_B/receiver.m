@@ -47,11 +47,12 @@
          subplot(2,1,2); plot(imag(barkerPass), 'r');                        
                          title('imag')
     
-    message = zeros(1,1000) + 0.5;          %testing dummy
+%     message = zeros(1,1000) + 0.5;          %testing dummy
     recording = audiorecorder(fs, recordBits, channels);   %Creating recording Object
     record(recording);                      %start recording
     tic;        %start counter, to keep track of recording time of each
                 %recording segment
+                
 %     found = false;
 %     while (found==false)
 %         % We have to find the preamble
@@ -68,9 +69,9 @@
         
                 
 %     while message(end) == 0.5;  %marker condition (dummy)
-        while toc < 1;          %waits for 'toc' seconds to record     
+        while toc < 1;            %waits for 'toc' seconds to record     
         end                 
-%        pause(recording);       %Pause recording
+%        pause(recording);        %Pause recording
 %        message = getaudiodata(recording,'single'); %fetch data
 %        resume(recording);                         
 %     end
@@ -92,11 +93,13 @@
     const = downsample(yt, sps);
     yangle = angle(const);
     constAngle = angle(constQPSK).';
-    indexSymb=zeros(length(const),1);
-    for i=1:length(const)
+    indexSymb = zeros(length(const),1);
+    
+    for i = 1:length(const)
         [~,x] = min(abs(yangle(i)-constAngle));
-        indexSymb(i)=x;
+        indexSymb(i) = x;
     end;
+    
     symbolsRec = indexSymb-1;
     
     bitsGroup = de2bi(symbolsRec);

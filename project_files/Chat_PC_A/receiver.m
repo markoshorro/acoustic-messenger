@@ -28,8 +28,6 @@
     run('../parameters.m')
     
     % Testing
-    close all;
-    clc;
     fc = 4000;
     
     %% Audio data collection
@@ -54,11 +52,11 @@
 %          subplot(2,1,2); plot(imag(pulseBarker), 'r');                        
 %                          title('imag')
     
-    message = zeros(1,1000) + 0.5;          %testing dummy
-    recording = audiorecorder(fs, recordBits, channels);   %Creating recording Object
-    record(recording);                      %start recording
-    tic;        %start counter, to keep track of recording time of each
-                %recording segment
+%     message = zeros(1,1000) + 0.5;  % testing dummy
+    recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
+    record(recording);              % start recording
+    tic;                            % start counter, to keep track of recording 
+                                    %  time of each recording segment
     %% @TODO
     % RECORDING AUDIO! 
 %     found = false;
@@ -76,15 +74,15 @@
 %     end
         
                 
-%     while message(end) == 0.5;  %marker condition (dummy)
-        while toc < 1;          %waits for 'toc' seconds to record     
+%     while message(end) == 0.5;    % marker condition (dummy)
+        while toc < 1;              % waits for 'toc' seconds to record     
         end                 
-%        pause(recording);       %Pause recording
+%        pause(recording);          % Pause recording
 %        message = getaudiodata(recording,'single'); %fetch data
 %        resume(recording);                         
 %     end
     message = getaudiodata(recording,'single');
-    stop(recording);    %stop recording after finding correct packet size
+    stop(recording);                % Stop recording after finding correct packet size
     
     % TO TRY -> this should get the peak value
     corr = conv(message, fliplr(barkerPass(sps*span:end-sps*span)));
@@ -96,7 +94,7 @@
     data = message.*(exp(-1i*2*pi*fc*t));
     
     %% Demodulation (MF)
-    yt = conv(si, data);
+    yt = conv(si, data);            % Convolution between received signal and rtrc pulse
     yt = yt(sps*span:end-sps*span);
     
 %     figure(111);
@@ -106,15 +104,16 @@
 %     plot(imag(yt));
 %     
     %% Decision: correct for QPSK and 8PSK
-    const = downsample(yt, sps);
-    scatterplot(const);
-    yangle = angle(const);
-    constAngle = angle(constQPSK).';
-    indexSymb=zeros(length(const),1);
-    for i=1:length(const)
-        [~,x] = min(abs(yangle(i)-constAngle));
-        indexSymb(i)=x;
+    const = downsample(yt, sps);        % Downsampling
+    scatterplot(const);                 % Plotting Constellations from received signal
+    constAngle = angle(const);          % Getting angles from received signal constellation
+    indexSymb = zeros(length(const),1); % Declaration before for-loop
+    
+    for i = 1:length(const)             % @TODO: Somehow remove for-loop for more efficiency?
+        [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
+        indexSymb(i) = x;               % Matching each symbol with correct constellation
     end;
+    
     symbolsRec = indexSymb-1;
     
     bitsGroup = de2bi(symbolsRec);
