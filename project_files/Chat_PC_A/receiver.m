@@ -102,7 +102,13 @@
 %     plot(real(yt));
 %     subplot(2,1,2);
 %     plot(imag(yt));
-%     
+% 
+%% Debugging symbols correlation to peaks
+
+h = 1:length(yt)/length(const):length(yt);
+figure(5)
+plot(real(yt),'k'); hold on; plot(h,real(const),'*r')
+
     %% Decision: correct for QPSK and 8PSK
     const = downsample(yt, sps);        % Downsampling
     scatterplot(const);                 % Plotting Constellations from received signal
