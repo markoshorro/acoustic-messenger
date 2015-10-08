@@ -26,21 +26,18 @@
     %
 	%% Some parameters
     run('../parameters.m')
-    
+    %close all;
     % Testing
-    fc = 4000;
+    fc = 6000;
     
     %% Audio data collection
     channels = 1;   
-    recordBits = 16; % WHAT ABOUT THIS? 8 or 16 bits? Should we ask?
+    recordBits = 16;
     
     % Preamble stuff
-    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
-    symbolsBarker = constBPSK(symbBarker);
-    pulseBarker = conv(upsample(symbolsBarker, round(sps)), si);
-    t = ((1:length(pulseBarker))/fs);
-    barkerPass = real(pulseBarker.*(exp(1i*2*pi*fc*t)));
-    barkerPass = barkerPass/max(barkerPass);
+%     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
+%     symbolsBarker = constBPSK(symbBarker);
+%     pulseBarker = conv(upsample(symbolsBarker, round(sps)), si);
 
 %     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
 %                          title('real')
@@ -73,56 +70,106 @@
 %         end     
 %     end
         
-                
+      %pause(1);      
 %     while message(end) == 0.5;    % marker condition (dummy)
-        while toc < 1;              % waits for 'toc' seconds to record     
-        end                 
+        while toc < 4;              % waits for 'toc' seconds to record     
+        end
+        
+        
+        
 %        pause(recording);          % Pause recording
 %        message = getaudiodata(recording,'single'); %fetch data
 %        resume(recording);                         
 %     end
     message = getaudiodata(recording,'single');
-    stop(recording);                % Stop recording after finding correct packet size
     
-    % TO TRY -> this should get the peak value
-    corr = conv(message, fliplr(barkerPass(sps*span:end-sps*span)));
-    figure(11);
-    plot(corr);
+%     N = max(1024,length(message));
+%     P = fftshift(fft(message,N));     
+%     fvec = (fs/N).*[0:(N-1)];
+%     fvec = (fvec < fs/2); 
+%    % figure(8); plot(fvec,20*log10(abs(P)));  
+%     
+%     xdftYouCareAbout = abs(P(1:round(N/2))); % Take the absolute magnitude.
+% 
+% [maxVal, index] = max(xdftYouCareAbout); % maxVal is your (un-normalized) maximum amplitude
+% 
+% maxFreq = freqsYouCareAbout(index); % This is the frequency of your dominant signal. 
+    
+%     tesdf= 20*log10(abs(P))
+%    
+%     [~,b] = max(fvec);
+%     b
+
+    stop(recording);                % Stop recording after finding correct packet size
     
     %% Passband to baseband
     t = ((1:length(message))/fs).';
     data = message.*(exp(-1i*2*pi*fc*t));
     
+    %% Low pass filter
+    order = 2^10;
+    Wn = 2*cutOff/fs;
+    lpf = fir1(order, Wn);    
+    data = conv(data, lpf);
+    
     %% Demodulation (MF)
     yt = conv(si, data);            % Convolution between received signal and rtrc pulse
-    yt = yt(sps*span:end-sps*span);
+    %yt = yt(sps*span:end-sps*span);
+
+    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
+    symbolsBarker = constBPSK(symbBarker);                  % Create the barker pulsetrain
+    pulseBarker = conv(upsample(symbolsBarker, sps), si);
     
-%     figure(111);
-%     subplot(2,1,1);
-%     plot(real(yt));
-%     subplot(2,1,2);
-%     plot(imag(yt));
-%     
+    % TO TRY -> t   his should get the peak value
+    corr = conv(yt, fliplr(pulseBarker));       % Autocorrelate signal with barker code
+    figure(122);
+    title('Correlation');                       % @TODO: Solve convolution problems so that
+    plot(abs(corr));                            %        we can tun even if sending random bits
+    
+    [~,PackStart] = max(corr);                  % Finding autocorrelation peak    
+       
+    %     figure(111);
+    %     subplot(2,1,1);
+    %     plot(real(yt));
+    %     subplot(2,1,2);
+    %     plot(imag(yt));
+    offset = floor(nBarker/2);                  % Compensate for the length of barker code in convolution 
+    PackStart = yt(PackStart-offset*sps:end);   % Remove all bits before the matching in convolution 
+    
     %% Decision: correct for QPSK and 8PSK
-    const = downsample(yt, sps);        % Downsampling
-    scatterplot(const);                 % Plotting Constellations from received signal
-    constAngle = angle(const);          % Getting angles from received signal constellation
-    indexSymb = zeros(length(const),1); % Declaration before for-loop
+     
+    const = downsample(PackStart, sps);         % Downsampling
+    constPilot = const(1:nPilots);              % Take the first pilot bits
+    constPack = const(nPilots+1:nPilots+Ns);    % The rest of the packet
     
-    for i = 1:length(const)             % @TODO: Somehow remove for-loop for more efficiency?
+    phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);   % calculating Phaseshift
+    
+    scatterplot(constPack*exp(-1i*phaseShift));                 % Plotting Constellations from received signal
+    scatterplot(constPilot*exp(-1i*phaseShift));
+    constAngle = angle(constPack) - phaseShift;          % Getting angles from received signal constellation
+    indexSymb = zeros(length(constPack),1); % Declaration before for-loop
+
+    for i = 1:length(constPack)             % @TODO: Somehow remove for-loop for more efficiency?
         [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
         indexSymb(i) = x;               % Matching each symbol with correct constellation
     end;
-    
+
     symbolsRec = indexSymb-1;
-    
+
     bitsGroup = de2bi(symbolsRec);
+    
+    h = 1:length(yt)/length(constPack):length(yt);
+%     figure(123)
+%     plot(real(yt),'k')
+%     hold on
+%     plot(h,real(constPack),'*r')
+%     hold off
     
     %% XHAT output
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
     
     %% PSD output
-    XhatdB = 20*log10(const);
+    XhatdB = 20*log10(constPack);
     [psdXhat, fXhat] = pwelch(abs(XhatdB),...
                                 hamming(128),[],[],fs,'twosided');
     psd = struct('p',psdXhat,'f',fXhat);

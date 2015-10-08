@@ -106,64 +106,59 @@
     t = ((1:length(message))/fs).';
     data = message.*(exp(-1i*2*pi*fc*t));
     
-%     pwelch(data, hamming(128),[],[],fs,'twosided');
-    
     %% Low pass filter
     order = 2^10;
     Wn = 2*cutOff/fs;
     lpf = fir1(order, Wn);    
-    %data = conv(data, lpf);
-    
-%     pwelch(data, hamming(128),[],[],fs,'twosided');
+    data = conv(data, lpf);
     
     %% Demodulation (MF)
     yt = conv(si, data);            % Convolution between received signal and rtrc pulse
     %yt = yt(sps*span:end-sps*span);
 
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
-    symbolsBarker = constBPSK(symbBarker);
-    const = downsample(yt, sps);        % Downsampling
-    pulseBarker = conv(symbolsBarker, si);
+    symbolsBarker = constBPSK(symbBarker);                  % Create the barker pulsetrain
+    pulseBarker = conv(upsample(symbolsBarker, sps), si);
     
     % TO TRY -> t   his should get the peak value
-    corr = conv(const, fliplr(symbolsBarker));
+    corr = conv(yt, fliplr(pulseBarker));       % Autocorrelate signal with barker code
     figure(122);
-    title('Correlation');
-    plot(abs(corr));
+    title('Correlation');                       % @TODO: Solve convolution problems so that
+    plot(abs(corr));                            %        we can tun even if sending random bits
     
-        [~,PackStart] = max(abs(corr));
-
-        PackStart = PackStart
-        
+    [~,PackStart] = max(corr);                  % Finding autocorrelation peak    
+       
     %     figure(111);
     %     subplot(2,1,1);
     %     plot(real(yt));
     %     subplot(2,1,2);
     %     plot(imag(yt));
+    offset = floor(nBarker/2);                  % Compensate for the length of barker code in convolution 
+    PackStart = yt(PackStart-offset*sps:end);   % Remove all bits before the matching in convolution 
+    
+    %% Decision: correct for QPSK and 8PSK
+     
+    const = downsample(PackStart, sps);         % Downsampling
+    constPilot = const(1:nPilots);              % Take the first pilot bits
+    constPack = const(nPilots+1:nPilots+Ns);    % The rest of the packet
+    
+    phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);   % calculating Phaseshift
+    
+    scatterplot(constPack*exp(-1i*phaseShift));                 % Plotting Constellations from received signal
+    scatterplot(constPilot*exp(-1i*phaseShift));
+    constAngle = angle(constPack) - phaseShift;          % Getting angles from received signal constellation
+    indexSymb = zeros(length(constPack),1); % Declaration before for-loop
 
-        %% Decision: correct for QPSK and 8PSK
+    for i = 1:length(constPack)             % @TODO: Somehow remove for-loop for more efficiency?
+        [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
+        indexSymb(i) = x;               % Matching each symbol with correct constellation
+    end;
 
-        constPack = const(PackStart+10:PackStart+10+Ns-1);
-        constPilot = const(PackStart:PackStart+9);
-        constBarker = const(PackStart-nBarker:PackStart-1);
+    symbolsRec = indexSymb-1;
 
-        scatterplot(constPack);                 % Plotting Constellations from received signal
-        scatterplot(constBarker);
-        scatterplot(constPilot);
-        constAngle = angle(constPack);          % Getting angles from received signal constellation
-        indexSymb = zeros(length(constPack),1); % Declaration before for-loop
-
-        for i = 1:length(constPack)             % @TODO: Somehow remove for-loop for more efficiency?
-            [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
-            indexSymb(i) = x;               % Matching each symbol with correct constellation
-        end;
-
-        symbolsRec = indexSymb-1;
-
-        bitsGroup = de2bi(symbolsRec);
-
-
-        h = 1:length(yt)/length(constPack):length(yt);
+    bitsGroup = de2bi(symbolsRec);
+    
+    h = 1:length(yt)/length(constPack):length(yt);
 %     figure(123)
 %     plot(real(yt),'k')
 %     hold on
