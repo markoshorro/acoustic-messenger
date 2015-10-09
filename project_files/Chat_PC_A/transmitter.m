@@ -32,10 +32,10 @@
         
     % Pulse convolution
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
-    s = conv(si, symbolsUp); 
+    st = conv(si, symbolsUp); 
     
     % Getting convoluted signal without heads nor tails
-    sTailless = s(sps*span:end-sps*span);
+    sTailless = st(sps*span:end-sps*span);
     
     % Converting onto passband signal
     t = ((1:length(sTailless))/fs).';
@@ -52,9 +52,9 @@
                              title('real')
              subplot(2,1,2); plot(imag(sTailless), 'r');                        
                              title('imag')
-    figure(2); subplot(2,1,1); plot(real(s), 'b');                         
+    figure(2); subplot(2,1,1); plot(real(st), 'b');                         
                              title('real')
-             subplot(2,1,2); plot(imag(s), 'r');                        
+             subplot(2,1,2); plot(imag(st), 'r');                        
                              title('imag')
 
     figure(3); subplot(2,1,1); plot(real(sPassband), 'b');                         

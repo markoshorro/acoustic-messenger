@@ -51,3 +51,7 @@ Ns = N/m;
 
 %% Rolloff factor
 rollOff = .3;
+
+%% Bwidth: since it is a raised cosine
+bandWd = (1+rollOff)/(2*Tau);
+Wn = 2*bandWd/fs;
