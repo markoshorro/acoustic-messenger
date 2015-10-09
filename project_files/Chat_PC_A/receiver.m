@@ -35,6 +35,9 @@
     channels = 1;       % Mono
     recordBits = 16;    % More precision
     
+    % Creating recording object
+    recording = audiorecorder(fs, recordBits, channels);   
+    
     %% Low pass filter params
     order = 2^10;
     lpf = fir1(order, Wn);   
@@ -44,7 +47,10 @@
     % Create the barker pulse train
     symbolsBarker = constBPSK(symbBarker);
     pulseBarker = conv(upsample(symbolsBarker, sps), si);
-
+    
+    % Start Recording
+    record(recording);
+    
 %     found = false;
 %     recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
 %     record(recording);              % start recording
@@ -83,12 +89,12 @@
 %    pause(1);
 %    inputSound = getaudiodata(recording,'single');
 %    stop(recording);
-%
-    recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
-    record(recording);              % start recording      
+%     
     pause(4);
     inputSound = getaudiodata(recording,'single');
-    stop(recording);                % Stop recording after finding correct packet size
+    
+    % Stop recording after finding correct packet size
+    stop(recording);                
     
     %% Passband to baseband
     t = ((1:length(inputSound))/fs).';
