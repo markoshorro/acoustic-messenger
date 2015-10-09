@@ -26,18 +26,146 @@
     %
 	%% Some parameters
     run('../parameters.m')
-    %close all;
+    
     % Testing
+    close all;
     fc = 6000;
     
     %% Audio data collection
-    channels = 1;   
-    recordBits = 16;
+    channels = 1;       % Mono
+    recordBits = 16;    % More precision
     
-    % Preamble stuff
-%     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
-%     symbolsBarker = constBPSK(symbBarker);
-%     pulseBarker = conv(upsample(symbolsBarker, round(sps)), si);
+    % Creating recording object
+    recording = audiorecorder(fs, recordBits, channels);   
+    
+    %% Low pass filter params
+    order = 2^10;
+    lpf = fir1(order, Wn);   
+
+    %% @TODO
+    % RECORDING AUDIO!
+    % Create the barker pulse train
+    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
+    symbolsBarker = constBPSK(symbBarker);
+    pulseBarker = conv(upsample(symbolsBarker, sps), si);
+    
+    % Start Recording
+    record(recording);
+    
+%     found = false;
+%     recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
+%     record(recording);              % start recording
+%     index = 1;
+%     win = nBarker*sps;
+%     tic;
+%     while (found==false)
+%         % Recording a window
+%         pause(win/fs);
+%
+%         % Getting data from mic
+%         in = getaudiodata(recording, 'single');
+%
+%         % Select a window
+%         tmp = in(index:index+win);
+%
+%         % Update index:
+%         index = index + win;
+%
+%         % Finding the preamble
+%         baseIndex = conv(si,index.*(exp(-1i*2*pi*fc*t));
+%         corr = conv(baseIndex, fliplr(pulseBarker));
+%         [peak, indexPeak] = max(corr);         
+%
+%         if (peak > threshold)
+%               indexPreamble = indexPeak; 
+%               found = true;
+%         end
+%         
+%         % If the preamble has not been found in tout sec, return
+%         if (tout<toc)
+%             Xhat=[]; psd=[]; const=[]; eyed=[];
+%             return;
+%         end     
+%     end
+%    pause(1);
+%    inputSound = getaudiodata(recording,'single');
+%    stop(recording);
+%     
+    pause(4);
+    inputSound = getaudiodata(recording,'single');
+    
+    % Stop recording after finding correct packet size
+    stop(recording);                
+    
+    %% Passband to baseband
+    t = ((1:length(inputSound))/fs).';
+    inputData = inputSound.*(exp(-1i*2*pi*fc*t));
+    
+    %% Low pass filter 
+    inputData = conv(inputData, lpf);
+    
+    %% Demodulation (MF)
+    % Convolution between received signal and rtrc pulse
+    yt = conv(si, inputData);
+    
+    %% TO ARRANGE. NOT WORKING PROPERLY
+    % Autocorrelate signal with barker code
+    corr = conv(yt, fliplr(pulseBarker));
+    
+    % Finding autocorrelation peak  
+    [~,startSamples] = max(corr);  
+    
+    %startSamples = indexPreamble + nPilots*sps + nBarker*sps;
+
+    % Calculate the delay so that the start of the packet is known    
+    delay_hat = startSamples - nBarker*sps;
+    
+    % Remove all bits before the matching in convolution 
+    uncutPacket = yt(delay_hat:end);
+    
+    %% Decision: correct for QPSK and 8PSK
+    downPacket = downsample(uncutPacket, sps);     % Downsampling
+    constPilot = downPacket(2:nPilots+1);          % Take the first pilot bits, starting at 2 to account for downsampling error
+    constPack = downPacket(nPilots+2:nPilots+Ns+1);    % The rest of the packet
+    
+    % Calculating Phaseshift
+    phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);
+    
+    %% Matching samples
+    % Getting angles from received signal constellation
+    constAngle = angle(constPack) - phaseShift;
+    % @TODO: Somehow remove for-loop for more efficiency?
+    indexSymb = zeros(length(constPack),1); 
+    for i = 1:length(constPack)
+        % Minimun distance on the constellation
+        [~,x] = min(abs(constAngle(i)-QPSKAngle));
+        % Matching each symbol with correct constellation
+        indexSymb(i) = x;               
+    end;
+    symbolsRec = indexSymb-1;
+    
+    %% Bits matched
+    bitsGroup = de2bi(symbolsRec, m);
+        
+    %% XHAT output
+    Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
+    
+    %% PSD output
+    XhatdB = 20*log10(constPack);
+    [psdXhat, fXhat] = pwelch(abs(XhatdB),...
+                                hamming(128),[],[],fs,'twosided');
+    psd = struct('p',psdXhat,'f',fXhat);
+    
+    %% Eyed output
+    eyed = struct('r',yt,'fsfd',sps);
+    
+    %% DEBUGGING ZONE
+    figure(1);
+    title('Correlation');                       % @TODO: Solve convolution problems so that
+    plot(abs(corr));                            %        we can tun even if sending random bits
+    % Plotting Constellations from received signal
+    scatterplot(constPack*exp(-1i*phaseShift));
+    scatterplot(constPilot*exp(-1i*phaseShift));
 
 %     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
 %                          title('real')
@@ -48,132 +176,11 @@
 %                          title('real')
 %          subplot(2,1,2); plot(imag(pulseBarker), 'r');                        
 %                          title('imag')
-    
-%     message = zeros(1,1000) + 0.5;  % testing dummy
-    recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
-    record(recording);              % start recording
-    tic;                            % start counter, to keep track of recording 
-                                    %  time of each recording segment
-    %% @TODO
-    % RECORDING AUDIO! 
-%     found = false;
-%     while (found==false)
-%         % Getting data from mic
-%         r = getaudiodata(recording, 'single');
-%
-%         % Finding the preamble @TODO
-%         
-%         % If the preamble has not been found in tout sec, return
-%         if (tout<toc)
-%             Xhat=[]; psd=[]; const=[]; eyed=[];
-%             return;
-%         end     
-%     end
-        
-      %pause(1);      
-%     while message(end) == 0.5;    % marker condition (dummy)
-        while toc < 4;              % waits for 'toc' seconds to record     
-        end
-        
-        
-        
-%        pause(recording);          % Pause recording
-%        message = getaudiodata(recording,'single'); %fetch data
-%        resume(recording);                         
-%     end
-    message = getaudiodata(recording,'single');
-    
-%     N = max(1024,length(message));
-%     P = fftshift(fft(message,N));     
-%     fvec = (fs/N).*[0:(N-1)];
-%     fvec = (fvec < fs/2); 
-%    % figure(8); plot(fvec,20*log10(abs(P)));  
-%     
-%     xdftYouCareAbout = abs(P(1:round(N/2))); % Take the absolute magnitude.
-% 
-% [maxVal, index] = max(xdftYouCareAbout); % maxVal is your (un-normalized) maximum amplitude
-% 
-% maxFreq = freqsYouCareAbout(index); % This is the frequency of your dominant signal. 
-    
-%     tesdf= 20*log10(abs(P))
-%    
-%     [~,b] = max(fvec);
-%     b
 
-    stop(recording);                % Stop recording after finding correct packet size
+%     figure(111);
+%     subplot(2,1,1);
+%     plot(real(yt));
+%     subplot(2,1,2);
+%     plot(imag(yt));
     
-    %% Passband to baseband
-    t = ((1:length(message))/fs).';
-    data = message.*(exp(-1i*2*pi*fc*t));
-    
-    %% Low pass filter
-    order = 2^10;
-    Wn = 2*cutOff/fs;
-    lpf = fir1(order, Wn);    
-    data = conv(data, lpf);
-    
-    %% Demodulation (MF)
-    yt = conv(si, data);            % Convolution between received signal and rtrc pulse
-    %yt = yt(sps*span:end-sps*span);
-
-    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
-    symbolsBarker = constBPSK(symbBarker);                  % Create the barker pulsetrain
-    pulseBarker = conv(upsample(symbolsBarker, sps), si);
-    
-    % TO TRY -> t   his should get the peak value
-    corr = conv(yt, fliplr(pulseBarker));       % Autocorrelate signal with barker code
-    figure(122);
-    title('Correlation');                       % @TODO: Solve convolution problems so that
-    plot(abs(corr));                            %        we can tun even if sending random bits
-    
-    [~,PackStart] = max(corr);                  % Finding autocorrelation peak    
-       
-    %     figure(111);
-    %     subplot(2,1,1);
-    %     plot(real(yt));
-    %     subplot(2,1,2);
-    %     plot(imag(yt));
-    offset = floor(nBarker/2);                  % Compensate for the length of barker code in convolution 
-    PackStart = yt(PackStart-offset*sps:end);   % Remove all bits before the matching in convolution 
-    
-    %% Decision: correct for QPSK and 8PSK
-     
-    const = downsample(PackStart, sps);         % Downsampling
-    constPilot = const(1:nPilots);              % Take the first pilot bits
-    constPack = const(nPilots+1:nPilots+Ns);    % The rest of the packet
-    
-    phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);   % calculating Phaseshift
-    
-    scatterplot(constPack*exp(-1i*phaseShift));                 % Plotting Constellations from received signal
-    scatterplot(constPilot*exp(-1i*phaseShift));
-    constAngle = angle(constPack) - phaseShift;          % Getting angles from received signal constellation
-    indexSymb = zeros(length(constPack),1); % Declaration before for-loop
-
-    for i = 1:length(constPack)             % @TODO: Somehow remove for-loop for more efficiency?
-        [~,x] = min(abs(constAngle(i)-QPSKAngle)); 
-        indexSymb(i) = x;               % Matching each symbol with correct constellation
-    end;
-
-    symbolsRec = indexSymb-1;
-
-    bitsGroup = de2bi(symbolsRec);
-    
-    h = 1:length(yt)/length(constPack):length(yt);
-%     figure(123)
-%     plot(real(yt),'k')
-%     hold on
-%     plot(h,real(constPack),'*r')
-%     hold off
-    
-    %% XHAT output
-    Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
-    
-    %% PSD output
-    XhatdB = 20*log10(constPack);
-    [psdXhat, fXhat] = pwelch(abs(XhatdB),...
-                                hamming(128),[],[],fs,'twosided');
-    psd = struct('p',psdXhat,'f',fXhat);
-    
-    %% eyed output
-    eyed = struct('r',yt,'fsfd',sps);
 %end

@@ -3,13 +3,13 @@
 
 %% Preamble
 % Barker code
-barker = [1 1 1 0 0 1 0];
+barker = [1 1 1 1 1 0 0 1 1 0 1 0 1];
 symbBarker = barker + 1;
 nBarker = length(barker);
 % Pilot
 pilots = [];
 symbPilots = pilots + 1;
-nPilots = length(pilots);
+nPilots = 10;
 
 %% Constellation
 constQPSK = [1+1i; 1-1i; -1+1i; -1-1i]/sqrt(2);
@@ -55,3 +55,4 @@ rollOff = .3;
 %% Bwidth: since it is a raised cosine
 bandWd = (1+rollOff)/(2*Tau);
 Wn = 2*bandWd/fs;
+cutOff = 150;

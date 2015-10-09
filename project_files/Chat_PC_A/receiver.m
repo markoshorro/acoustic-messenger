@@ -45,6 +45,7 @@
     %% @TODO
     % RECORDING AUDIO!
     % Create the barker pulse train
+    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
     symbolsBarker = constBPSK(symbBarker);
     pulseBarker = conv(upsample(symbolsBarker, sps), si);
     
@@ -106,31 +107,26 @@
     %% Demodulation (MF)
     % Convolution between received signal and rtrc pulse
     yt = conv(si, inputData);
-    [si,~] = rtrcpuls(rollOff, Tau, fs, span);
     
-%     % Create the barker pulse train
-%     symbolsBarker = constBPSK(symbBarker);
-%     pulseBarker = conv(upsample(symbolsBarker, sps), si);
-%     
-%     %% TO ARRANGE. NOT WORKING PROPERLY
-%     % Autocorrelate signal with barker code
-%     corr = conv(yt, fliplr(pulseBarker));
-%     
-%     % Finding autocorrelation peak  
-%     [~,startSamples] = max(corr);  
+    %% TO ARRANGE. NOT WORKING PROPERLY
+    % Autocorrelate signal with barker code
+    corr = conv(yt, fliplr(pulseBarker));
     
-    startSamples = indexPreamble + nPilots*sps + nBarker*sps;
+    % Finding autocorrelation peak  
+    [~,startSamples] = max(corr);  
+    
+    %startSamples = indexPreamble + nPilots*sps + nBarker*sps;
 
-    % Compensate for the length of barker code in convolution 
-    offset = floor(nBarker/2);
+    % Calculate the delay so that the start of the packet is known    
+    delay_hat = startSamples - nBarker*sps;
     
     % Remove all bits before the matching in convolution 
-    startSamples = yt(startSamples-offset*sps:end);
+    uncutPacket = yt(delay_hat:end);
     
     %% Decision: correct for QPSK and 8PSK
-    samples = downsample(startSamples, sps);     % Downsampling
-    constPilot = samples(1:nPilots);          % Take the first pilot bits
-    const = samples(nPilots+1:nPilots+Ns);    % The rest of the packet
+    downPacket = downsample(uncutPacket, sps);     % Downsampling
+    constPilot = downPacket(2:nPilots+1);          % Take the first pilot bits, starting at 2 to account for downsampling error
+    constPack = downPacket(nPilots+2:nPilots+Ns+1);    % The rest of the packet
     
     % Calculating Phaseshift
     phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);
@@ -149,7 +145,7 @@
     symbolsRec = indexSymb-1;
     
     %% Bits matched
-    bitsGroup = de2bi(symbolsRec);
+    bitsGroup = de2bi(symbolsRec, m);
         
     %% XHAT output
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
@@ -164,12 +160,12 @@
     eyed = struct('r',yt,'fsfd',sps);
     
     %% DEBUGGING ZONE
-%     figure(122);
-%     title('Correlation');                       % @TODO: Solve convolution problems so that
-%     plot(abs(corr));                            %        we can tun even if sending random bits
-%     % Plotting Constellations from received signal
-%     scatterplot(constPack*exp(-1i*phaseShift));
-%     scatterplot(constPilot*exp(-1i*phaseShift));
+    figure(1);
+    title('Correlation');                       % @TODO: Solve convolution problems so that
+    plot(abs(corr));                            %        we can tun even if sending random bits
+    % Plotting Constellations from received signal
+    scatterplot(constPack*exp(-1i*phaseShift));
+    scatterplot(constPilot*exp(-1i*phaseShift));
 
 %     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
 %                          title('real')

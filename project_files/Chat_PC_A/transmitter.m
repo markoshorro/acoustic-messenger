@@ -12,9 +12,9 @@
     
     run('../parameters.m');
     close all;
-    pilot = ones(1,10);
-    packet = [pilot randsrc(1,N,[1 1])];        % Just for test
-    fc = 4000;
+    pilot = zeros(1,20);
+    packet = [pilot randsrc(1,N,[0 1])];        % Just for test
+    fc = 6000;
 
     % Split in m columns
     bitsGroup = buffer(packet,m)';     
@@ -49,18 +49,19 @@
 
     %% DEBUGGING
     figure(1); subplot(2,1,1); plot(real(sTailless), 'b');                         
-                             title('real')
+                             title('Real Part Concatinated - BaseBand')
              subplot(2,1,2); plot(imag(sTailless), 'r');                        
-                             title('imag')
-    figure(2); subplot(2,1,1); plot(real(st), 'b');                         
-                             title('real')
-             subplot(2,1,2); plot(imag(st), 'r');                        
-                             title('imag')
+                             title('Imaginary Part Concatinated - BaseBand')
+                             
+%     figure(2); subplot(2,1,1); plot(real(st), 'b');                         
+%                              title('Real Part - BaseBand')
+%              subplot(2,1,2); plot(imag(st), 'r');                        
+%                              title('Imaginary Part - BaseBand')
 
     figure(3); subplot(2,1,1); plot(real(sPassband), 'b');                         
-                             title('real')
+                             title('Real Part - PassBand')
              subplot(2,1,2); plot(imag(sPassband), 'r');                        
-                             title('imag')
+                             title('Imaginary Part PassBand')
 %     figure(1);
 %     pwelch(sPassband,hamming(512),[],[],fs,'centered');
 %     
