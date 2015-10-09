@@ -50,7 +50,7 @@
 %     record(recording);              % start recording
 %     index = 1;
 %     win = nBarker*sps;
-%     tmp = [];
+%     tic;
 %     while (found==false)
 %         % Recording a window
 %         pause(win/fs);
