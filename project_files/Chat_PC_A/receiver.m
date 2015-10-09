@@ -44,10 +44,6 @@
     % Create the barker pulse train
     symbolsBarker = constBPSK(symbBarker);
     pulseBarker = conv(upsample(symbolsBarker, sps), si);
-    
-    %% TO ARRANGE. NOT WORKING PROPERLY
-    % Autocorrelate signal with barker code
-    corr = conv(yt, fliplr(pulseBarker));
 
 %     found = false;
 %     recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
@@ -71,9 +67,10 @@
 %         % Finding the preamble
 %         baseIndex = conv(si,index.*(exp(-1i*2*pi*fc*t));
 %         corr = conv(baseIndex, fliplr(pulseBarker));
-%         peak = max(corr);         
+%         [peak, indexPeak] = max(corr);         
 %
 %         if (peak > threshold)
+%               indexPreamble = indexPeak; 
 %               found = true;
 %         end
 %         
@@ -83,7 +80,6 @@
 %             return;
 %         end     
 %     end
-%    indexPreamble = index;
 %    pause(1);
 %    inputSound = getaudiodata(recording,'single');
 %    stop(recording);
@@ -116,7 +112,9 @@
 %     
 %     % Finding autocorrelation peak  
 %     [~,startSamples] = max(corr);  
-     
+    
+    startSamples = indexPreamble + nPilots*sps + nBarker*sps;
+
     % Compensate for the length of barker code in convolution 
     offset = floor(nBarker/2);
     
