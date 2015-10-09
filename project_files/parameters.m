@@ -13,7 +13,7 @@ nPilots = length(pilots);
 
 %% Constellation
 constQPSK = [1+1i; 1-1i; -1+1i; -1-1i]/sqrt(2);
-constBPSK = [1 -1]/sqrt(2);
+constBPSK = [1+1i -1-1i]/sqrt(2);
 
 QPSKAngle = angle(constQPSK).';
 BPSKAngle = angle(constBPSK).';
