@@ -31,94 +31,105 @@
     close all;
     fc = 6000;
     
-    %% Audio data collection
+    %% Recorder declarations
     channels = 1;       % Mono
     recordBits = 16;    % More precision
     
     % Creating recording object
     recording = audiorecorder(fs, recordBits, channels);   
     
-    %% Low pass filter params
+    %% Low pass filter
+    
     order = 2^10;
-    lpf = fir1(order, Wn);   
+    lpf = fir1(order, Wn);
+    
+    %% Recording Audio
 
-    %% @TODO
-    % RECORDING AUDIO!
     % Create the barker pulse train
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
     symbolsBarker = constBPSK(symbBarker);
     pulseBarker = conv(upsample(symbolsBarker, sps), si);
     
+    % Declarations
+    foundBarker = 0;
+    threshold = 40;
+    tout = 6;                   % for testing since no input
+    
     % Start Recording
     record(recording);
+    tic;
     
-%     found = false;
-%     recording = audiorecorder(fs, recordBits, channels);   % Creating recording Object
-%     record(recording);              % start recording
-%     index = 1;
-%     win = nBarker*sps;
-%     tic;
-%     while (found==false)
-%         % Recording a window
-%         pause(win/fs);
-%
-%         % Getting data from mic
-%         in = getaudiodata(recording, 'single');
-%
-%         % Select a window
-%         tmp = in(index:index+win);
-%
-%         % Update index:
-%         index = index + win;
-%
-%         % Finding the preamble
-%         baseIndex = conv(si,index.*(exp(-1i*2*pi*fc*t));
-%         corr = conv(baseIndex, fliplr(pulseBarker));
-%         [peak, indexPeak] = max(corr);         
-%
-%         if (peak > threshold)
-%               indexPreamble = indexPeak; 
-%               found = true;
-%         end
-%         
-%         % If the preamble has not been found in tout sec, return
-%         if (tout<toc)
-%             Xhat=[]; psd=[]; const=[]; eyed=[];
-%             return;
-%         end     
-%     end
-%    pause(1);
-%    inputSound = getaudiodata(recording,'single');
-%    stop(recording);
+    while (true)
+        % Record 1 second (entire packet is 0.99s)
+        pause(1)
+            
+        % Fetch Data
+        inputSound = getaudiodata(recording, 'single');
+        
+        t = ((1:length(inputSound))/fs).';
+        inputData = inputSound.*(exp(-1i*2*pi*fc*t));
+        
+        inputData = conv(inputData, lpf);
+        
+        yt = conv(si, inputData);
+        
+        corr = conv(yt, fliplr(pulseBarker));
+        
+        if (foundBarker == 1)
+            break
+        end
+
+        % Check for correlation with barker code
+        [peakV, idxPeak] = max(abs(corr));
+        corr(idxPeak-(nBarker/2)*sps:idxPeak+(nBarker/2)*sps) = [];
+        
+        % Check for difference between barker code and packet
+        [peakV2, idxPeak2] = max(abs(corr));
+        diff = peakV - peakV2;
+            
+        if (peakV > threshold) && (diff > 30)
+            idxPreamble = idxPeak;
+            foundBarker = 1;
+        end
+            
+        % If the preamble has not been found in tout sec, return
+        if (tout < toc)
+            disp('I Found Nothin')
+            Xhat=[]; psd=[]; const=[]; eyed=[];            
+            return
+        end        
+    end
+    stop(recording)
+    disp('MF Tic to the TOC')
+       
+%     pause(4);
+%     inputSound = getaudiodata(recording,'single');
 %     
-    pause(4);
-    inputSound = getaudiodata(recording,'single');
-    
-    % Stop recording after finding correct packet size
-    stop(recording);                
+%     % Stop recording after finding correct packet size WORKING
+%     stop(recording);                
     
     %% Passband to baseband
-    t = ((1:length(inputSound))/fs).';
-    inputData = inputSound.*(exp(-1i*2*pi*fc*t));
+%     t = ((1:length(inputSound))/fs).';
+%     inputData = inputSound.*(exp(-1i*2*pi*fc*t));
     
     %% Low pass filter 
-    inputData = conv(inputData, lpf);
+%     inputData = conv(inputData, lpf);
     
     %% Demodulation (MF)
     % Convolution between received signal and rtrc pulse
-    yt = conv(si, inputData);
+%     yt = conv(si, inputData);
     
     %% TO ARRANGE. NOT WORKING PROPERLY
     % Autocorrelate signal with barker code
-    corr = conv(yt, fliplr(pulseBarker));
+%     corr = conv(yt, fliplr(pulseBarker));
     
     % Finding autocorrelation peak  
-    [~,startSamples] = max(corr);  
+%     [~,startSamples] = max(abs(corr));  
     
     %startSamples = indexPreamble + nPilots*sps + nBarker*sps;
 
     % Calculate the delay so that the start of the packet is known    
-    delay_hat = startSamples - nBarker*sps;
+    delay_hat = idxPreamble - nBarker*sps;
     
     % Remove all bits before the matching in convolution 
     uncutPacket = yt(delay_hat:end);
