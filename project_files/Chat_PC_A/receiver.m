@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -27,10 +27,6 @@
 	%% Some parameters
     run('../parameters.m')
     
-    % Testing
-    close all;
-    fc = 6000;
-    
     %% Recorder declarations
     channels = 1;       % Mono
     recordBits = 16;    % More precision
@@ -52,8 +48,8 @@
     
     % Declarations
     foundBarker = 0;
-    threshold = 40;
-    tout = 6;                   % for testing since no input
+    threshold = 20;
+%     tout = 6;                   % for testing since no input
     
     % Start Recording
     record(recording);
@@ -87,7 +83,7 @@
         [peakV2, idxPeak2] = max(abs(corr));
         diff = peakV - peakV2;
             
-        if (peakV > threshold) && (diff > 30)
+        if (peakV > threshold) && (diff > threshold)
             idxPreamble = idxPeak;
             foundBarker = 1;
         end
@@ -101,32 +97,6 @@
     end
     stop(recording)
     disp('MF Tic to the TOC')
-       
-%     pause(4);
-%     inputSound = getaudiodata(recording,'single');
-%     
-%     % Stop recording after finding correct packet size WORKING
-%     stop(recording);                
-    
-    %% Passband to baseband
-%     t = ((1:length(inputSound))/fs).';
-%     inputData = inputSound.*(exp(-1i*2*pi*fc*t));
-    
-    %% Low pass filter 
-%     inputData = conv(inputData, lpf);
-    
-    %% Demodulation (MF)
-    % Convolution between received signal and rtrc pulse
-%     yt = conv(si, inputData);
-    
-    %% TO ARRANGE. NOT WORKING PROPERLY
-    % Autocorrelate signal with barker code
-%     corr = conv(yt, fliplr(pulseBarker));
-    
-    % Finding autocorrelation peak  
-%     [~,startSamples] = max(abs(corr));  
-    
-    %startSamples = indexPreamble + nPilots*sps + nBarker*sps;
 
     % Calculate the delay so that the start of the packet is known    
     delay_hat = idxPreamble - nBarker*sps;
@@ -138,6 +108,8 @@
     downPacket = downsample(uncutPacket, sps);     % Downsampling
     constPilot = downPacket(2:nPilots+1);          % Take the first pilot bits, starting at 2 to account for downsampling error
     constPack = downPacket(nPilots+2:nPilots+Ns+1);    % The rest of the packet
+    
+   
     
     % Calculating Phaseshift
     phaseShift = wrapTo2Pi(mean(angle(constPilot))) - (pi/4);
@@ -158,26 +130,27 @@
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m);
         
-    %% XHAT output
+    %% Outputs
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
+    const = constPack*exp(-1i*phaseShift);
     
     %% PSD output
-    XhatdB = 20*log10(constPack);
+    XhatdB = 20*log10(const);
     [psdXhat, fXhat] = pwelch(abs(XhatdB),...
                                 hamming(128),[],[],fs,'twosided');
     psd = struct('p',psdXhat,'f',fXhat);
     
     %% Eyed output
-    eyed = struct('r',yt,'fsfd',sps);
+    eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps);
     
     %% DEBUGGING ZONE
-    figure(1);
-    title('Correlation');                       % @TODO: Solve convolution problems so that
-    plot(abs(corr));                            %        we can tun even if sending random bits
-    % Plotting Constellations from received signal
-    scatterplot(constPack*exp(-1i*phaseShift));
-    scatterplot(constPilot*exp(-1i*phaseShift));
-
+%     figure(1);
+%     title('Correlation');                       % @TODO: Solve convolution problems so that
+%     plot(abs(corr));                            %        we can tun even if sending random bits
+%     % Plotting Constellations from received signal
+%     scatterplot(constPack*exp(-1i*phaseShift));
+%     scatterplot(constPilot*exp(-1i*phaseShift));
+% 
 %     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
 %                          title('real')
 %          subplot(2,1,2); plot(imag(barkerPass), 'r');                        
@@ -194,4 +167,4 @@
 %     subplot(2,1,2);
 %     plot(imag(yt));
     
-%end
+end
