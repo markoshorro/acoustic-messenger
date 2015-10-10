@@ -26,6 +26,11 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
+<<<<<<< HEAD
+%    fc = 5000;
+ %   tout=inf;
+=======
+>>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
     
     %% Recorder declarations
     channels = 1;       % Mono
@@ -49,6 +54,104 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     % Declarations
     foundBarker = 0;
     threshold = 20;
+<<<<<<< HEAD
+    
+    % Start Recording
+    record(recording);
+    tic;
+    
+    while (true)
+        % Record 1 second (entire packet is 0.99s)
+        pause(1)
+            
+        % Fetch Data
+        inputSound = getaudiodata(recording, 'single');
+        
+        t = ((1:length(inputSound))/fs).';
+        inputData = inputSound.*(exp(-1i*2*pi*fc*t));
+        
+        inputData = conv(inputData, lpf);
+        
+        yt = conv(si, inputData);
+        
+        corr = conv(yt, fliplr(pulseBarker));
+        
+        if (foundBarker == 1)
+            break
+        end
+
+        % Check for correlation with barker code
+        [peakV, idxPeak] = max(abs(corr));
+        corr(idxPeak-(nBarker/2)*sps:idxPeak+(nBarker/2)*sps) = [];
+        
+        % Check for difference between barker code and packet
+        [peakV2, idxPeak2] = max(abs(corr));
+        diff = peakV - peakV2;
+            
+        if (peakV > threshold) && (diff > threshold)
+            idxPreamble = idxPeak;
+            foundBarker = 1;
+        end
+            
+        % If the preamble has not been found in tout sec, return
+        if (tout < toc)
+            disp('I Found Nothin')
+            Xhat=[]; psd=[]; const=[]; eyed=[];            
+            return
+        end        
+    end
+    stop(recording)
+    disp('MF Tic to the TOC')
+
+    % Calculate the delay so that the start of the packet is known    
+    delay_hat = idxPreamble - length(pulseBarker) + sps*span +1;
+    
+    % Remove all bits before the matching in convolution 
+    uncutPacket = yt(delay_hat:end);    
+    
+    %% Decision: correct for QPSK and 8PSK
+    downPacket = downsample(uncutPacket, sps);     % Downsampling
+%     constPilot = downPacket(nBarker+1:nBarker+nPilots);          % Take the first pilot bits, starting at 2 to account for downsampling error
+    constBarker = downPacket(1:nBarker);
+    constPack = downPacket(nBarker:nBarker+Ns);    % The rest of the packet
+    
+    stem(real(downPacket));
+    
+    % Calculating Phaseshift
+%     phaseShift = mean(wrapTo2Pi(angle(constPilot))) - (pi/4);
+    
+    % Calculating Phaseshift: Barker way
+    tmpOnes = zeros(1,9);
+    indxOnes = 1;
+    tmpZeros = zeros(1,4);
+    indxZeros = 1;
+    for i=1:nBarker
+        if (barker(i))
+            tmpOnes(indxOnes) = wrapTo2Pi(angle(constBarker(i))) + (3*pi/4);
+            indxOnes = indxOnes + 1;
+        else
+            tmpZeros(indxZeros) = wrapTo2Pi(angle(constBarker(i))) - (pi/4);
+            indxZeros = indxZeros + 1;
+        end
+    end
+    phaseShift = mean([tmpOnes tmpZeros]);
+    
+    %% Matching samples
+    % Getting angles from received signal constellation
+    constAngle = angle(constPack) - phaseShift;
+    % @TODO: Somehow remove for-loop for more efficiency?
+    indexSymb = zeros(length(constPack),1); 
+    for i = 1:length(constPack)
+        % Minimun distance on the constellation
+        [~,x] = min(abs(constAngle(i)-QPSKAngle));
+        % Matching each symbol with correct constellation
+        indexSymb(i) = x;               
+    end;
+    symbolsRec = indexSymb-1;
+    
+    %% Bits matched
+    bitsGroup = de2bi(symbolsRec, m, 'left-msb');
+=======
 %     tout = 6;                   % for testing since no input
     
     % Start Recording
@@ -129,19 +232,47 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m);
+>>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
         
     %% Outputs
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
     const = constPack*exp(-1i*phaseShift);
+<<<<<<< HEAD
+
+    temp_const = zeros(1,length(const));
+    max_norm = 0; 
+        
+    for j=1:length(const)
+        if(norm(const(j))>max_norm)
+            max_norm = norm(const(j));
+        end
+    end
+
+    for i=1:length(temp_const)    
+     temp_const(i)=const(i)./max_norm;
+    end
+
+	const = temp_const;
+    
+    scatterplot(const)    
+=======
+>>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
     
     %% PSD output
     XhatdB = 20*log10(const);
     [psdXhat, fXhat] = pwelch(abs(XhatdB),...
                                 hamming(128),[],[],fs,'twosided');
     psd = struct('p',psdXhat,'f',fXhat);
+<<<<<<< HEAD
+        
+    %% Eyed output
+    %eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps); 
+    eyed = struct('r',uncutPacket((2)*sps:(Ns+1)*sps),'fsfd',sps); %New, do not know if it works yet. Matlab is acting stupid !!!!!!!!
+=======
     
     %% Eyed output
     eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps);
+>>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
     
     %% DEBUGGING ZONE
 %     figure(1);
@@ -166,5 +297,9 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %     plot(real(yt));
 %     subplot(2,1,2);
 %     plot(imag(yt));
+<<<<<<< HEAD
+    %
+=======
     
+>>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
 end
