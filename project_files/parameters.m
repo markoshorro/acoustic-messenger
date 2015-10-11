@@ -23,7 +23,7 @@ fs = 44e3;
 Ts = 1/fs;
 
 %% Bit rate
-Rb = 440;
+Rb = 320;
 
 %% Number of bits to transmit
 N = 432;
@@ -44,7 +44,7 @@ Tau=1/Rs;
 span=12;
 
 %% Samples per symbol
-sps=fs/Rs;
+sps=round(fs/Rs);
 
 %% Number of symbols per packet
 Ns = N/m;

@@ -1,4 +1,4 @@
-function [Xhat, psd, const, eyed] = receiver(tout,fc)
+%function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -26,8 +26,8 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-%    fc = 5000;
- %   tout=inf;
+   fc = 5000;
+   tout=inf;
     
     %% Recorder declarations
     channels = 1;       % Mono
@@ -58,7 +58,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     while (true)
         % Record 1 second (entire packet is 0.99s)
-        pause(1)
+        pause(3)
             
         % Fetch Data
         inputSound = getaudiodata(recording, 'single');
@@ -78,7 +78,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 
         % Check for correlation with barker code
         [peakV, idxPeak] = max(abs(corr));
-        corr(idxPeak-(nBarker/2)*sps:idxPeak+(nBarker/2)*sps) = [];
+        corr(idxPeak-(floor(nBarker/2))*sps:idxPeak+(floor(nBarker/2))*sps) = [];
         
         % Check for difference between barker code and packet
         [peakV2, idxPeak2] = max(abs(corr));
@@ -100,16 +100,17 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
-    delay_hat = idxPreamble - length(pulseBarker) + sps*span +1;
+    delay_hat = idxPreamble - length(pulseBarker) + sps*span + 1;
     
     % Remove all bits before the matching in convolution 
-    uncutPacket = yt(delay_hat:end);    
+    uncutPacket = yt(delay_hat:end);
+    uncutPacket = uncutPacket(1:(Ns*m+nBarker)*sps);
     
     %% Decision: correct for QPSK and 8PSK
     downPacket = downsample(uncutPacket, sps);     % Downsampling
 %     constPilot = downPacket(nBarker+1:nBarker+nPilots);          % Take the first pilot bits, starting at 2 to account for downsampling error
     constBarker = downPacket(1:nBarker);
-    constPack = downPacket(nBarker:nBarker+Ns);    % The rest of the packet
+    constPack = downPacket(nBarker+1:nBarker+Ns);    % The rest of the packet
     
     stem(real(downPacket));
     
@@ -117,22 +118,13 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %     phaseShift = mean(wrapTo2Pi(angle(constPilot))) - (pi/4);
     
     % Calculating Phaseshift: Barker way
-    tmpOnes = zeros(1,9);
-    indxOnes = 1;
-    tmpZeros = zeros(1,4);
-    indxZeros = 1;
-    for i=1:nBarker
-        if (barker(i))
-            tmpOnes(indxOnes) = wrapTo2Pi(angle(constBarker(i))) + (3*pi/4);
-            indxOnes = indxOnes + 1;
-        else
-            tmpZeros(indxZeros) = wrapTo2Pi(angle(constBarker(i))) - (pi/4);
-            indxZeros = indxZeros + 1;
-        end
-    end
-    phaseShift = mean([tmpOnes tmpZeros]);
+       
+    tmpOnes = constBarker(barker == 1);
+    tmpOnes = [mean(real(tmpOnes)) mean(imag(tmpOnes))];
+    tmpOnes = tmpOnes(:,1) + tmpOnes(:,2)*1i;
+    phaseShift = wrapTo2Pi(angle(tmpOnes))-5*pi/4;
     
-    %% Matching samples
+      %% Matching samples
     % Getting angles from received signal constellation
     constAngle = angle(constPack) - phaseShift;
     % @TODO: Somehow remove for-loop for more efficiency?
@@ -167,7 +159,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 
 	const = temp_const;
     
-    scatterplot(const)    
+   
     
     %% PSD output
     XhatdB = 20*log10(const);
@@ -177,9 +169,31 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         
     %% Eyed output
     %eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps); 
-    eyed = struct('r',uncutPacket((2)*sps:(Ns+1)*sps),'fsfd',sps); %New, do not know if it works yet. Matlab is acting stupid !!!!!!!!
-    
+     eyed = struct('r',uncutPacket(2*sps:(Ns+1)*sps),'fsfd',sps); %New, do not know if it works yet. Matlab is acting stupid !!!!!!!!
+
     %% DEBUGGING ZONE
+    
+    eyediagram(uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps),sps);
+    
+   
+    scatterplot(const) 
+    
+    %%
+    figure(123)
+        subplot(2,1,1)
+ 
+    plot(real(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
+       title('real')
+    hold on
+    plot(upsample(real(constPack),sps),'r*')
+    subplot(2,1,2)
+  
+    plot(imag(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
+      title('imag')
+    hold on
+    plot(upsample(imag(constPack),sps),'r*')
+    
+    %%
 %     figure(1);
 %     title('Correlation');                       % @TODO: Solve convolution problems so that
 %     plot(abs(corr));                            %        we can tun even if sending random bits
@@ -203,4 +217,4 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %     subplot(2,1,2);
 %     plot(imag(yt));
     %
-end
+%end
