@@ -11,13 +11,8 @@ function transmitter( packet, fc )
     %
     
     run('../parameters.m');
-<<<<<<< HEAD
    % pilot = zeros(1,20);
     packet = [packet'];        % Just for test
-=======
-    pilot = zeros(1,20);
-    packet = [pilot packet'];        % Just for test
->>>>>>> 54f2b27468d26db88eec98d97517b7238f5976d8
 %     fc = 6000;
 
     % Split in m columns
