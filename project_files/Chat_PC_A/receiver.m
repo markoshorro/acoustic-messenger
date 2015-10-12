@@ -26,8 +26,8 @@
     %
 	%% Some parameters
     run('../parameters.m')
-   fc = 5000;
-   tout=inf;
+%    fc = 5000;
+%    tout=inf;
     
     %% Recorder declarations
     channels = 1;       % Mono
@@ -55,10 +55,10 @@
     % Start Recording
     record(recording);
     tic;
-    
+    win = 1;
     while (true)
         % Record 1 second (entire packet is 0.99s)
-        pause(3)
+        pause(2);
             
         % Fetch Data
         inputSound = getaudiodata(recording, 'single');
@@ -70,12 +70,12 @@
         
         yt = conv(si, inputData);
         
-        corr = conv(yt, fliplr(pulseBarker));
-        
         if (foundBarker == 1)
             break
         end
 
+        corr = conv(yt, fliplr(pulseBarker));
+        
         % Check for correlation with barker code
         [peakV, idxPeak] = max(abs(corr));
         corr(idxPeak-(floor(nBarker/2))*sps:idxPeak+(floor(nBarker/2))*sps) = [];
@@ -83,7 +83,7 @@
         % Check for difference between barker code and packet
         [peakV2, idxPeak2] = max(abs(corr));
         diff = peakV - peakV2;
-            
+
         if (peakV > threshold) && (diff > threshold)
             idxPreamble = idxPeak;
             foundBarker = 1;
@@ -94,16 +94,16 @@
             disp('I Found Nothin')
             Xhat=[]; psd=[]; const=[]; eyed=[];            
             return
-        end        
+        end
     end
     stop(recording)
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
-    delay_hat = idxPreamble - length(pulseBarker) + sps*span + 1;
+    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1;
     
     % Remove all bits before the matching in convolution 
-    uncutPacket = yt(delay_hat:end);
+    uncutPacket = yt(delayHat:end);
     uncutPacket = uncutPacket(1:(Ns*m+nBarker)*sps);
     
     %% Decision: correct for QPSK and 8PSK
@@ -112,9 +112,9 @@
     constBarker = downPacket(1:nBarker);
     constPack = downPacket(nBarker+1:nBarker+Ns);    % The rest of the packet
     
-    stem(real(downPacket));
+%     stem(real(downPacket));
     
-    % Calculating Phaseshift
+    % Calculating Phaseshift 
 %     phaseShift = mean(wrapTo2Pi(angle(constPilot))) - (pi/4);
     
     % Calculating Phaseshift: Barker way
@@ -124,7 +124,7 @@
     tmpOnes = tmpOnes(:,1) + tmpOnes(:,2)*1i;
     phaseShift = wrapTo2Pi(angle(tmpOnes))-5*pi/4;
     
-      %% Matching samples
+    %% Matching samples
     % Getting angles from received signal constellation
     constAngle = angle(constPack) - phaseShift;
     % @TODO: Somehow remove for-loop for more efficiency?
@@ -144,54 +144,66 @@
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
     const = constPack*exp(-1i*phaseShift);
 
-    temp_const = zeros(1,length(const));
-    max_norm = 0; 
+    tempConst = zeros(1,length(const));
+    maxNorm = 0; 
         
     for j=1:length(const)
-        if(norm(const(j))>max_norm)
-            max_norm = norm(const(j));
+        if(norm(const(j))>maxNorm)
+            maxNorm = norm(const(j));
         end
     end
 
-    for i=1:length(temp_const)    
-     temp_const(i)=const(i)./max_norm;
+    for i=1:length(tempConst)    
+     tempConst(i)=const(i)./maxNorm;
     end
-
-	const = temp_const;
+	const = tempConst;
     
-   
+    %% PSD output (WE HAVE TO USE FFT)!!!!!!!!!!! ARRANGE THIS MADAFAKAAAAAAAAAAAAAA
+%     XhatdB = 20*log10(abs(const));
+%     [psdXhat, fXhat] = pwelch(XhatdB,hamming(128),[],[],fs,'twosided');
+%     psd = struct('p',psdXhat,'f',fXhat);
     
-    %% PSD output
-    XhatdB = 20*log10(const);
-    [psdXhat, fXhat] = pwelch(abs(XhatdB),...
-                                hamming(128),[],[],fs,'twosided');
+    PSDN = length(const);
+    fXhat = zeros(1:length(PSDN));
+    xdft = fft(const);
+    psdx = (1/(2*pi*PSDN))*abs(xdft).^2;
+    psdXhat = 20*log10(abs(psdx));
+    for i = 1:(PSDN/2-1)
+    fXhat(i) = (i*fs)/PSDN;
+    end
+    for i = PSDN/2 : PSDN
+        fXhat(i) =(i*fs)/PSDN - fs;
+    end
     psd = struct('p',psdXhat,'f',fXhat);
-        
     %% Eyed output
     %eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps); 
-     eyed = struct('r',uncutPacket(2*sps:(Ns+1)*sps),'fsfd',sps); %New, do not know if it works yet. Matlab is acting stupid !!!!!!!!
+    eyed = struct('r',uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift),'fsfd',sps);
 
     %% DEBUGGING ZONE
+    % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
+    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
+    eyediagram(correctedPacket,sps);
     
-    eyediagram(uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps),sps);
-    
-   
     scatterplot(const) 
     
     %%
     figure(123)
-        subplot(2,1,1)
+    subplot(2,1,1)
  
     plot(real(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-       title('real')
+    title('real')
     hold on
     plot(upsample(real(constPack),sps),'r*')
+    plot(upsample(real(const),sps),'g*')
+    plot(real(correctedPacket),'k');
     subplot(2,1,2)
   
     plot(imag(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-      title('imag')
+    title('imag')
     hold on
     plot(upsample(imag(constPack),sps),'r*')
+    plot(upsample(imag(const),sps),'g*')
+    plot(imag(correctedPacket),'k');
     
     %%
 %     figure(1);
