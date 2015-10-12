@@ -58,10 +58,10 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     win = 1;
     while (true)
         % Record 1 second (entire packet is 0.99s)
-        pause(2);
+        pause(3);
             
         % Fetch Data
-        inputSound = getaudiodata(recording, 'single');
+        inputSound = getaudiodata(recording, 'double');
         
         t = ((1:length(inputSound))/fs).';
         inputData = inputSound.*(exp(-1i*2*pi*fc*t));
@@ -123,17 +123,15 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     tmpOnes = [mean(real(tmpOnes)) mean(imag(tmpOnes))];
     tmpOnes = tmpOnes(:,1) + tmpOnes(:,2)*1i;
     phaseShift = wrapTo2Pi(angle(tmpOnes))-5*pi/4;
+
+    const = constPack*exp(-1i*phaseShift);
     
     %% Matching samples
-    % Getting angles from received signal constellation
-    constAngle = angle(constPack) - phaseShift;
     % @TODO: Somehow remove for-loop for more efficiency?
-    indexSymb = zeros(length(constPack),1); 
-    for i = 1:length(constPack)
+    indexSymb = zeros(length(const),1); 
+    for i = 1:length(const)
         % Minimun distance on the constellation
-        [~,x] = min(abs(constAngle(i)-QPSKAngle));
-        % Matching each symbol with correct constellation
-        indexSymb(i) = x;               
+        [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
     end;
     symbolsRec = indexSymb-1;
     
@@ -142,7 +140,6 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         
     %% Outputs
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
-    const = constPack*exp(-1i*phaseShift);
 
     tempConst = zeros(1,length(const));
     maxNorm = 0; 
@@ -156,35 +153,27 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     for i=1:length(tempConst)    
      tempConst(i)=const(i)./maxNorm;
     end
-	const = tempConst;
-    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
+	const = tempConst;    
+      
+    %% PSD output
+
+    psdData = inputSound(delayHat:end);
+    psdData = psdData(1:(Ns*m+nBarker)*sps);  
+        
+    [pwData,pwVec] = pwelch(psdData,[],[],(fc-400):(fc+400),fs,'twosided');
+    pwData = 10*log10(pwData./max(pwData));
     
-    %% PSD output (WE HAVE TO USE FFT)!!!!!!!!!!! ARRANGE THIS MADAFAKAAAAAAAAAAAAAA
-%     XhatdB = 20*log10(abs(const));
-%     [psdXhat, fXhat] = pwelch(XhatdB,hamming(128),[],[],fs,'twosided');
-%     psd = struct('p',psdXhat,'f',fXhat);
-    
-    PSDN = length(correctedPacket);
-    xdft = fftshift(fft(real(const),PSDN));
-    fvec = (fs/PSDN)*(-floor(PSDN/2):1:ceil(PSDN/2)-1);
-    
-    psdx = (1/(2*pi*PSDN))*abs(xdft).^2;
-    psd_max = max(psdx);
-    psdXhat = 20*log10(abs(psdx./psd_max));
-    
-    
-    psd = struct('p',psdXhat,'f',fvec);
-    %plot(fvec,psdXhat)
+    psd = struct('p',pwData,'f',pwVec-fc);
     
     %% Eyed output
-    %eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps); 
+    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
     eyed = struct('r',correctedPacket,'fsfd',sps);
 
     %% DEBUGGING ZONE
     % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
 %     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
 %     eyediagram(correctedPacket,sps);
-    
+%      plot(pwVec,10*log10(pwData./max(pwData)))
 %     scatterplot(const) 
 %     
 %     %%
@@ -229,5 +218,5 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %     plot(real(yt));
 %     subplot(2,1,2);
 %     plot(imag(yt));
-    %
+    %load('debugPacket.mat')
 end
