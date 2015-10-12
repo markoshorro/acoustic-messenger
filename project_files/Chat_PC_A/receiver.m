@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -157,53 +157,54 @@
      tempConst(i)=const(i)./maxNorm;
     end
 	const = tempConst;
+    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
     
     %% PSD output (WE HAVE TO USE FFT)!!!!!!!!!!! ARRANGE THIS MADAFAKAAAAAAAAAAAAAA
 %     XhatdB = 20*log10(abs(const));
 %     [psdXhat, fXhat] = pwelch(XhatdB,hamming(128),[],[],fs,'twosided');
 %     psd = struct('p',psdXhat,'f',fXhat);
     
-    PSDN = length(const);
-    fXhat = zeros(1:length(PSDN));
-    xdft = fft(const);
+    PSDN = length(correctedPacket);
+    xdft = fftshift(fft(real(const),PSDN));
+    fvec = (fs/PSDN)*(-floor(PSDN/2):1:ceil(PSDN/2)-1);
+    
     psdx = (1/(2*pi*PSDN))*abs(xdft).^2;
-    psdXhat = 20*log10(abs(psdx));
-    for i = 1:(PSDN/2-1)
-    fXhat(i) = (i*fs)/PSDN;
-    end
-    for i = PSDN/2 : PSDN
-        fXhat(i) =(i*fs)/PSDN - fs;
-    end
-    psd = struct('p',psdXhat,'f',fXhat);
+    psd_max = max(psdx);
+    psdXhat = 20*log10(abs(psdx./psd_max));
+    
+    
+    psd = struct('p',psdXhat,'f',fvec);
+    %plot(fvec,psdXhat)
+    
     %% Eyed output
     %eyed = struct('r',uncutPacket((2+nPilots)*sps:(nPilots+Ns+1)*sps),'fsfd',sps); 
-    eyed = struct('r',uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift),'fsfd',sps);
+    eyed = struct('r',correctedPacket,'fsfd',sps);
 
     %% DEBUGGING ZONE
     % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
-    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
-    eyediagram(correctedPacket,sps);
+%     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
+%     eyediagram(correctedPacket,sps);
     
-    scatterplot(const) 
-    
-    %%
-    figure(123)
-    subplot(2,1,1)
- 
-    plot(real(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-    title('real')
-    hold on
-    plot(upsample(real(constPack),sps),'r*')
-    plot(upsample(real(const),sps),'g*')
-    plot(real(correctedPacket),'k');
-    subplot(2,1,2)
-  
-    plot(imag(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-    title('imag')
-    hold on
-    plot(upsample(imag(constPack),sps),'r*')
-    plot(upsample(imag(const),sps),'g*')
-    plot(imag(correctedPacket),'k');
+%     scatterplot(const) 
+%     
+%     %%
+%     figure(123)
+%     subplot(2,1,1)
+%  
+%     plot(real(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
+%     title('real')
+%     hold on
+%     plot(upsample(real(constPack),sps),'r*')
+%     plot(upsample(real(const),sps),'g*')
+%     plot(real(correctedPacket),'k');
+%     subplot(2,1,2)
+%   
+%     plot(imag(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
+%     title('imag')
+%     hold on
+%     plot(upsample(imag(constPack),sps),'r*')
+%     plot(upsample(imag(const),sps),'g*')
+%     plot(imag(correctedPacket),'k');
     
     %%
 %     figure(1);
@@ -229,4 +230,4 @@
 %     subplot(2,1,2);
 %     plot(imag(yt));
     %
-%end
+end
