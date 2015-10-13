@@ -31,16 +31,16 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     %% Recorder declarations
     channels = 1;       % Mono
-    recordBits = 16;    % More precision
+    recordBits = 8;    % More precision
     
     % Creating recording object
     recording = audiorecorder(fs, recordBits, channels);   
     
     %% Low pass filter
     
-    order = 2^10;
-    lpf = fir1(order, Wn);
-    
+%     order = 2^10;
+%     lpf = fir1(order, Wn);
+%     
     %% Recording Audio
 
     % Create the barker pulse train
@@ -55,9 +55,10 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     timePreamble = .2;
     timeData = 1;
     
-    %timeMax = 7;
+    timeMax = 7;
     
     idxWin = 1;
+    prevIdxWin = 0;
     
     % Start Recording
     record(recording);
@@ -116,7 +117,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %         end;
     end
     stop(recording)
-%     clear recording;
+    %clear recording;
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
@@ -147,21 +148,15 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     const = constPack*exp(-1i*phaseShift);
     
     %% Matching samples
+    % @TODO: Somehow remove for-loop for more efficiency?
+    indexSymb = zeros(length(const),1); 
+    for i = 1:length(const)
+        % Minimun distance on the constellation
+        [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
+    end;
+    global symbolsRec;
+    symbolsRec = indexSymb-1;
     
-    symbolsRec = const;
-    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) > 0) = 0;
-    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) < 0) = 1;
-    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) > 0) = 2;
-    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) < 0) = 3;
-    
-%     % @TODO: Somehow remove for-loop for more efficiency?
-%     indexSymb = zeros(length(const),1); 
-%     for i = 1:length(const)
-%         % Minimun distance on the constellation
-%         [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
-%     end;
-%     symbolsRec = indexSymb-1;
-%     
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m, 'left-msb');
         
@@ -183,10 +178,12 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	const = tempConst;    
       
     %% PSD output
-
+    global psdData;
     psdData = inputSound(delayHat:end);
-    psdData = psdData(1:(Ns*m+nBarker)*sps);  
-        
+    psdData = psdData(nBarker*sps:(Ns+nBarker)*sps);  
+    
+    global pwData;
+    global pwVec;
     [pwData,pwVec] = pwelch(psdData,[],[],[],fs,'twosided');
     pwData = 10*log10(pwData./max(pwData));
     
@@ -196,7 +193,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
     eyed = struct('r',correctedPacket,'fsfd',sps);
 
-    finalTime = toc;
+   
     %% DEBUGGING ZONE
     % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
 %     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);

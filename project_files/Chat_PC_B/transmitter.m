@@ -9,7 +9,7 @@ function transmitter( packet, fc )
     %
     % OUTPUT: SOUND to the speaker
     %
-    
+    global symbols;
     run('../parameters.m');
    % pilot = zeros(1,20);
     packet = [packet'];        % Just for test
