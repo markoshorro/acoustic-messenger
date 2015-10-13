@@ -52,27 +52,35 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     foundBarker = 0;
     threshold = 20;
     
+    timePreamble = .2;
+    timeData = 1;
+    
+    %timeMax = 7;
+    
+    idxWin = 1;
+    
     % Start Recording
     record(recording);
     tic;
-    win = 1;
     while (true)
         % Record 1 second (entire packet is 0.99s)
-        pause(3);
+        pause(timePreamble);
             
         % Fetch Data
         inputSound = getaudiodata(recording, 'double');
+        tmpWindow = inputSound(idxWin:end);
         
-        t = ((1:length(inputSound))/fs).';
-        inputData = inputSound.*(exp(-1i*2*pi*fc*t));
-        
-        inputData = conv(inputData, lpf);
+        t = ((1:length(tmpWindow))/fs).';
+        inputData = tmpWindow.*(exp(-1i*2*pi*fc*t));
         
         yt = conv(si, inputData);
         
         if (foundBarker == 1)
             break
         end
+        
+        prevIdxWin = idxWin;
+        idxWin = length(inputSound);
 
         corr = conv(yt, fliplr(pulseBarker));
         
@@ -81,12 +89,14 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         corr(idxPeak-(floor(nBarker/2))*sps:idxPeak+(floor(nBarker/2))*sps) = [];
         
         % Check for difference between barker code and packet
-        [peakV2, idxPeak2] = max(abs(corr));
+        [peakV2, ~] = max(abs(corr));
         diff = peakV - peakV2;
 
         if (peakV > threshold) && (diff > threshold)
             idxPreamble = idxPeak;
             foundBarker = 1;
+            pause(timeData);
+            idxWin = prevIdxWin;
         end
             
         % If the preamble has not been found in tout sec, return
@@ -95,8 +105,18 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
             Xhat=[]; psd=[]; const=[]; eyed=[];            
             return
         end
+        
+        % On chat mode, otherwise an overflow can occur
+%         if (toc > timeMax)
+%             stop(recording);
+%             clear recording;
+%             recording = audiorecorder(fs, recordBits, channels);
+%             record(recording);
+%             idxWin = 1;
+%         end;
     end
     stop(recording)
+%     clear recording;
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
@@ -104,7 +124,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     
     % Remove all bits before the matching in convolution 
     uncutPacket = yt(delayHat:end);
-    uncutPacket = uncutPacket(1:(Ns*m+nBarker)*sps);
+    uncutPacket = uncutPacket(1:(Ns+nBarker)*sps);
     
     %% Decision: correct for QPSK and 8PSK
     downPacket = downsample(uncutPacket, sps);     % Downsampling
@@ -127,14 +147,21 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     const = constPack*exp(-1i*phaseShift);
     
     %% Matching samples
-    % @TODO: Somehow remove for-loop for more efficiency?
-    indexSymb = zeros(length(const),1); 
-    for i = 1:length(const)
-        % Minimun distance on the constellation
-        [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
-    end;
-    symbolsRec = indexSymb-1;
     
+    symbolsRec = const;
+    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) > 0) = 0;
+    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) < 0) = 1;
+    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) > 0) = 2;
+    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) < 0) = 3;
+    
+%     % @TODO: Somehow remove for-loop for more efficiency?
+%     indexSymb = zeros(length(const),1); 
+%     for i = 1:length(const)
+%         % Minimun distance on the constellation
+%         [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
+%     end;
+%     symbolsRec = indexSymb-1;
+%     
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m, 'left-msb');
         
@@ -160,7 +187,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     psdData = inputSound(delayHat:end);
     psdData = psdData(1:(Ns*m+nBarker)*sps);  
         
-    [pwData,pwVec] = pwelch(psdData,[],[],(fc-400):(fc+400),fs,'twosided');
+    [pwData,pwVec] = pwelch(psdData,[],[],[],fs,'twosided');
     pwData = 10*log10(pwData./max(pwData));
     
     psd = struct('p',pwData,'f',pwVec-fc);
@@ -169,6 +196,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
     eyed = struct('r',correctedPacket,'fsfd',sps);
 
+    finalTime = toc;
     %% DEBUGGING ZONE
     % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
 %     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);

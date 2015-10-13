@@ -23,7 +23,7 @@ fs = 44e3;
 Ts = 1/fs;
 
 %% Bit rate
-Rb = 320;
+Rb = 440;
 
 %% Number of bits to transmit
 N = 432;
