@@ -4,7 +4,7 @@
 %% Preamble
 
 % GUARD
-guard = zeros(1,4);
+guard = zeros(1,10);
 symbGuard = guard + 1;
 nGuard = length(guard);
 

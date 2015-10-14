@@ -123,7 +123,7 @@
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
-    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1 + nGuard*sps;
+    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1 - nGuard*sps;
     
     % Remove all bits before the matching in convolution 
     uncutPacket = yt(delayHat:end);
