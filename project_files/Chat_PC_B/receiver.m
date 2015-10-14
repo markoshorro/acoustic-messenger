@@ -1,4 +1,4 @@
-function [Xhat, psd, const, eyed] = receiver(tout,fc)
+%function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -26,12 +26,12 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     %
 	%% Some parameters
     run('../parameters.m')
-%    fc = 5000;
-%    tout=inf;
+    fc = 5000;
+    tout=inf;
     
     %% Recorder declarations
     channels = 1;       % Mono
-    recordBits = 8;    % More precision
+    recordBits = 16;    % More precision
     
     % Creating recording object
     recording = audiorecorder(fs, recordBits, channels);   
@@ -63,6 +63,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     % Start Recording
     record(recording);
     tic;
+    global idxPeak;
     while (true)
         % Record 1 second (entire packet is 0.99s)
         pause(timePreamble);
@@ -77,6 +78,7 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
         yt = conv(si, inputData);
         
         if (foundBarker == 1)
+                       
             break
         end
         
@@ -121,17 +123,17 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     disp('MF Tic to the TOC')
 
     % Calculate the delay so that the start of the packet is known    
-    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1;
+    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1 + nGuard*sps;
     
     % Remove all bits before the matching in convolution 
     uncutPacket = yt(delayHat:end);
-    uncutPacket = uncutPacket(1:(Ns+nBarker)*sps);
+    uncutPacket = uncutPacket(1:(Ns+nBarker+nGuard)*sps);
     
     %% Decision: correct for QPSK and 8PSK
     downPacket = downsample(uncutPacket, sps);     % Downsampling
 %     constPilot = downPacket(nBarker+1:nBarker+nPilots);          % Take the first pilot bits, starting at 2 to account for downsampling error
     constBarker = downPacket(1:nBarker);
-    constPack = downPacket(nBarker+1:nBarker+Ns);    % The rest of the packet
+    constPack = downPacket(nBarker+nGuard+1:nBarker+nGuard+Ns);    % The rest of the packet
     
 %     stem(real(downPacket));
     
@@ -148,14 +150,20 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
     const = constPack*exp(-1i*phaseShift);
     
     %% Matching samples
-    % @TODO: Somehow remove for-loop for more efficiency?
-    indexSymb = zeros(length(const),1); 
-    for i = 1:length(const)
-        % Minimun distance on the constellation
-        [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
-    end;
-    global symbolsRec;
-    symbolsRec = indexSymb-1;
+    symbolsRec = const;
+    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) > 0) = 0;
+    symbolsRec(real(symbolsRec) > 0 & imag(symbolsRec) < 0) = 1;
+    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) > 0) = 2;
+    symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) < 0) = 3;
+    
+%     % @TODO: Somehow remove for-loop for more efficiency?
+%     indexSymb = zeros(length(const),1); 
+%     for i = 1:length(const)
+%         % Minimun distance on the constellation
+%         [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
+%     end;
+%     symbolsRec = indexSymb-1;
+%     
     
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m, 'left-msb');
@@ -179,25 +187,38 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
       
     %% PSD output
     global psdData;
-    psdData = inputSound(delayHat:end);
-    psdData = psdData(nBarker*sps:(Ns+nBarker)*sps);  
+%     psdData = inputSound(delayHat:end);
+    psdData = tmpWindow;
+    psdData = psdData((nBarker+nGuard)*sps:(Ns+nBarker+nGuard)*sps);  
     
     global pwData;
     global pwVec;
     [pwData,pwVec] = pwelch(psdData,[],[],[],fs,'twosided');
-    pwData = 10*log10(pwData./max(pwData));
+  
+    %Length of each segment in pwVec
+    step_pw = (length(pwVec)/fs); 
+
+    %Conversion to dB and normalization (to 0 db)
+    pwData = 10*log10(pwData./max(pwData((round(step_pw*fc)-...
+        round(step_pw*500):round(step_pw*fc)+round(step_pw*500)))));
+ 
+  
     
     psd = struct('p',pwData,'f',pwVec-fc);
     
     %% Eyed output
-    correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
+    correctedPacket = uncutPacket((1+nBarker+nGuard)*sps:sps*(nBarker+nGuard+Ns-1))*exp(-1i*phaseShift);
     eyed = struct('r',correctedPacket,'fsfd',sps);
-
+    
+%     figure(1);
+%     plot(pwVec,pwData);
+%     eyediagram(correctedPacket,sps);
    
     %% DEBUGGING ZONE
-    % When correcting packet, we loose energy (see Figure 123, the black plot!): ask Keerthi why, he knows
+    % When correcting packet, we loose energy (see Figure 12d3, the black plot!): ask Keerthi why, he knows
 %     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
 %     eyediagram(correctedPacket,sps);
+%     plot(pwVec, pwData);
 %      plot(pwVec,10*log10(pwData./max(pwData)))
 %     scatterplot(const) 
 %     
@@ -244,4 +265,4 @@ function [Xhat, psd, const, eyed] = receiver(tout,fc)
 %     subplot(2,1,2);
 %     plot(imag(yt));
     %load('debugPacket.mat')
-end
+%end

@@ -2,6 +2,13 @@
 % Just the collection of parameters in common for Rx and Tx
 
 %% Preamble
+
+% GUARD
+guard = zeros(1,4);
+symbGuard = guard + 1;
+nGuard = length(guard);
+
+
 % Barker code
 barker = [1 1 1 1 1 0 0 1 1 0 1 0 1];
 symbBarker = barker + 1;
