@@ -23,9 +23,10 @@ function transmitter( packet, fc )
     % Match barker code with BPSK constellation
     symbolsBarker = constBPSK(symbBarker);
     
-    % Match barker code with BPSK constellation
+    % Match guard symbol with BPSK constellation
     symbolsGuard = constBPSK(singleGuard); 
- 
+
+    % Concatenate all symbols
     symbols = [symbolsBarker.'; symbolsGuard.'; symbols];
     
     % Space the symbols fsfd apart, to enable pulse shaping using conv
