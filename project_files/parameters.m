@@ -2,28 +2,19 @@
 % Just the collection of parameters in common for Rx and Tx
 
 %% Preamble
-
-% GUARD
-guard = zeros(1,10);
-symbGuard = guard + 1;
-nGuard = length(guard);
-
+% Guard: 12*sps silence and 1*sps symbol silence to 'clean' the silence
+guard = zeros(1,12);
+singleGuard = 1;
+nGuard = length(guard)+1;
 
 % Barker code
 barker = [1 1 1 1 1 0 0 1 1 0 1 0 1];
 symbBarker = barker + 1;
 nBarker = length(barker);
-% Pilot
-pilots = [];
-symbPilots = pilots + 1;
-nPilots = 10;
 
 %% Constellation
 constQPSK = [1+1i; 1-1i; -1+1i; -1-1i]/sqrt(2);
 constBPSK = [1+1i -1-1i]/sqrt(2);
-
-QPSKAngle = angle(constQPSK).';
-BPSKAngle = angle(constBPSK).';
 
 %% Sampling freq
 fs = 44e3;
@@ -58,8 +49,3 @@ Ns = N/m;
 
 %% Rolloff factor
 rollOff = .3;
-
-%% Bwidth: since it is a raised cosine
-bandWd = (1+rollOff)/(2*Tau);
-Wn = 2*bandWd/fs;
-cutOff = 150;
