@@ -1,4 +1,4 @@
-%function [Xhat, psd, const, eyed] = receiver(tout,fc)
+function [Xhat, psd, const, eyed] = receiver(tout,fc)
 	%% RECEIVER FUNCTION
     % Group 13
     % Introduction to Communication Engineering. September 2015 
@@ -25,45 +25,38 @@
     %                 desired eye diagram).
     %
 	%% Some parameters
-    run('../parameters.m')
-    fc = 5000;
-    tout=inf;
+    run('../parameters.m');
     
     %% Recorder declarations
     channels = 1;       % Mono
     recordBits = 16;    % More precision
-    
     % Creating recording object
     recording = audiorecorder(fs, recordBits, channels);   
     
-    %% Low pass filter
-    
-%     order = 2^10;
-%     lpf = fir1(order, Wn);
-%     
     %% Recording Audio
-
     % Create the barker pulse train
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
     symbolsBarker = constBPSK(symbBarker);
     pulseBarker = conv(upsample(symbolsBarker, sps), si);
     
-    % Declarations
+    %% Declarations
+    % Check if Barker was found
     foundBarker = 0;
-    threshold = 20;
-    
+    % Difference between peaks on a window correlated
+    thresholdDiff = 20;
+    % Threshold 
+    thresholdPeak = 20;
+    % Pause between iterations on the loop
     timePreamble = .2;
+    % Time to record all the data after finding the Barker sequence
     timeData = 1;
-    
-    timeMax = 7;
-    
+    % Index for the window
     idxWin = 1;
-    prevIdxWin = 0;
-    
     % Start Recording
     record(recording);
     tic;
-    global idxPeak;
+    
+    % Recording loop
     while (true)
         % Record 1 second (entire packet is 0.99s)
         pause(timePreamble);
@@ -72,30 +65,38 @@
         inputSound = getaudiodata(recording, 'double');
         tmpWindow = inputSound(idxWin:end);
         
+        % Converting window to baseband
         t = ((1:length(tmpWindow))/fs).';
         inputData = tmpWindow.*(exp(-1i*2*pi*fc*t));
         
+        % Convolution with the pulse
         yt = conv(si, inputData);
         
-        if (foundBarker == 1)
-                       
+        % If Barker sequence found, then we do not need to keep looking for
+        % more data since we waited on the previous iteration, then we skip
+        % the loop and continue
+        if (foundBarker)
             break
         end
         
+        % Updating the window index
         prevIdxWin = idxWin;
         idxWin = length(inputSound);
 
+        % Cross correlation with the barker pulse to find the sequence
         corr = conv(yt, fliplr(pulseBarker));
         
         % Check for correlation with barker code
         [peakV, idxPeak] = max(abs(corr));
-        corr(idxPeak-(floor(nBarker/2))*sps:idxPeak+(floor(nBarker/2))*sps) = [];
+        corr(idxPeak-(floor(nBarker/2))*sps:...
+            idxPeak+(floor(nBarker/2))*sps) = [];
         
         % Check for difference between barker code and packet
         [peakV2, ~] = max(abs(corr));
         diff = peakV - peakV2;
 
-        if (peakV > threshold) && (diff > threshold)
+        % If there is a peak, then we found the Barker sequence
+        if (peakV > thresholdPeak) && (diff > thresholdDiff)
             idxPreamble = idxPeak;
             foundBarker = 1;
             pause(timeData);
@@ -104,49 +105,35 @@
             
         % If the preamble has not been found in tout sec, return
         if (tout < toc)
-            disp('I Found Nothin')
+            disp('I found nothing')
             Xhat=[]; psd=[]; const=[]; eyed=[];            
             return
         end
-        
-        % On chat mode, otherwise an overflow can occur
-%         if (toc > timeMax)
-%             stop(recording);
-%             clear recording;
-%             recording = audiorecorder(fs, recordBits, channels);
-%             record(recording);
-%             idxWin = 1;
-%         end;
     end
-    stop(recording)
-    %clear recording;
-    disp('MF Tic to the TOC')
+    stop(recording);
 
     % Calculate the delay so that the start of the packet is known    
-    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1 - nGuard*sps;
+    delayHat = idxPreamble - length(pulseBarker) + sps*span + 1;
     
-    % Remove all bits before the matching in convolution 
+    % Remove all bits before the matching in convolution
     uncutPacket = yt(delayHat:end);
     uncutPacket = uncutPacket(1:(Ns+nBarker+nGuard)*sps);
     
-    %% Decision: correct for QPSK and 8PSK
-    downPacket = downsample(uncutPacket, sps);     % Downsampling
-%     constPilot = downPacket(nBarker+1:nBarker+nPilots);          % Take the first pilot bits, starting at 2 to account for downsampling error
+    %% Decision: correct for QPSK
+    % Packet downsampled
+    downPacket = downsample(uncutPacket, sps);
+    % Barker samples
     constBarker = downPacket(1:nBarker);
-    constPack = downPacket(nBarker+nGuard+1:nBarker+nGuard+Ns);    % The rest of the packet
+    % Data samples
+    constPack = downPacket(nBarker+nGuard+1:nBarker+nGuard+Ns);
     
-%     stem(real(downPacket));
-    
-    % Calculating Phaseshift 
-%     phaseShift = mean(wrapTo2Pi(angle(constPilot))) - (pi/4);
-    
-    % Calculating Phaseshift: Barker way
-       
+    % Calculating Phaseshift: Barker way   
     tmpOnes = constBarker(barker == 1);
     tmpOnes = [mean(real(tmpOnes)) mean(imag(tmpOnes))];
     tmpOnes = tmpOnes(:,1) + tmpOnes(:,2)*1i;
     phaseShift = wrapTo2Pi(angle(tmpOnes))-5*pi/4;
-
+    
+    %% Const output
     const = constPack*exp(-1i*phaseShift);
     
     %% Matching samples
@@ -156,113 +143,49 @@
     symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) > 0) = 2;
     symbolsRec(real(symbolsRec) < 0 & imag(symbolsRec) < 0) = 3;
     
-%     % @TODO: Somehow remove for-loop for more efficiency?
-%     indexSymb = zeros(length(const),1); 
-%     for i = 1:length(const)
-%         % Minimun distance on the constellation
-%         [~,indexSymb(i)] = min(abs(const(i)-constQPSK));             
-%     end;
-%     symbolsRec = indexSymb-1;
-%     
-    
     %% Bits matched
     bitsGroup = de2bi(symbolsRec, m, 'left-msb');
         
     %% Outputs
     Xhat = reshape(bitsGroup.',[1,m*length(bitsGroup)]);
 
+    % Normalization process
     tempConst = zeros(1,length(const));
     maxNorm = 0; 
-        
+    
+    % Looking for the maximun normalized value
     for j=1:length(const)
         if(norm(const(j))>maxNorm)
             maxNorm = norm(const(j));
         end
     end
 
+    % Dividing all values with the maximum value found before
     for i=1:length(tempConst)    
      tempConst(i)=const(i)./maxNorm;
     end
+    
+    % Output constellation normalized
 	const = tempConst;    
       
     %% PSD output
-    global psdData;
-%     psdData = inputSound(delayHat:end);
+    % Taking the passband signal
     psdData = tmpWindow;
-    psdData = psdData((nBarker+nGuard)*sps:(Ns+nBarker+nGuard)*sps);  
-    
-    global pwData;
-    global pwVec;
+    % Selecting passband singal related with the data
+    psdData = psdData((nBarker+nGuard)*sps:(Ns+nBarker+nGuard)*sps);
+    % Getting the PSD via Welch's method
     [pwData,pwVec] = pwelch(psdData,[],[],[],fs,'twosided');
-  
-    %Length of each segment in pwVec
-    step_pw = (length(pwVec)/fs); 
-
-    %Conversion to dB and normalization (to 0 db)
-    pwData = 10*log10(pwData./max(pwData((round(step_pw*fc)-...
-        round(step_pw*500):round(step_pw*fc)+round(step_pw*500)))));
- 
-  
-    
+    % Length of each segment in pwVec
+    stepPw = (length(pwVec)/fs); 
+    % Conversion to dB and normalization (to 0 db)
+    pwData = 10*log10(pwData./max(pwData((round(stepPw*fc)-...
+        round(stepPw*500):round(stepPw*fc)+round(stepPw*500)))));
+    % Output PSD
     psd = struct('p',pwData,'f',pwVec-fc);
     
     %% Eyed output
-    correctedPacket = uncutPacket((1+nBarker+nGuard)*sps:sps*(nBarker+nGuard+Ns-1))*exp(-1i*phaseShift);
+    correctedPacket = uncutPacket((1+nBarker+nGuard)*sps:...
+        sps*(nBarker+nGuard+Ns-1))*exp(-1i*phaseShift);
     eyed = struct('r',correctedPacket,'fsfd',sps);
-    
-%     figure(1);
-%     plot(pwVec,pwData);
-%     eyediagram(correctedPacket,sps);
-   
-    %% DEBUGGING ZONE
-    % When correcting packet, we loose energy (see Figure 12d3, the black plot!): ask Keerthi why, he knows
-%     correctedPacket = uncutPacket(sps+nBarker*sps:nBarker*sps+Ns*sps-sps)*exp(-1i*phaseShift);
-%     eyediagram(correctedPacket,sps);
-%     plot(pwVec, pwData);
-%      plot(pwVec,10*log10(pwData./max(pwData)))
-%     scatterplot(const) 
-%     
-%     %%
-%     figure(123)
-%     subplot(2,1,1)
-%  
-%     plot(real(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-%     title('real')
-%     hold on
-%     plot(upsample(real(constPack),sps),'r*')
-%     plot(upsample(real(const),sps),'g*')
-%     plot(real(correctedPacket),'k');
-%     subplot(2,1,2)
-%   
-%     plot(imag(uncutPacket(1+nBarker*sps:nBarker*sps+Ns*sps-sps)))
-%     title('imag')
-%     hold on
-%     plot(upsample(imag(constPack),sps),'r*')
-%     plot(upsample(imag(const),sps),'g*')
-%     plot(imag(correctedPacket),'k');
-    
-    %%
-%     figure(1);
-%     title('Correlation');                       % @TODO: Solve convolution problems so that
-%     plot(abs(corr));                            %        we can tun even if sending random bits
-%     % Plotting Constellations from received signal
-%     scatterplot(constPack*exp(-1i*phaseShift));
-%     scatterplot(constPilot*exp(-1i*phaseShift));
-% 
-%     figure(4); subplot(2,1,1); plot(real(barkerPass), 'b');                         
-%                          title('real')
-%          subplot(2,1,2); plot(imag(barkerPass), 'r');                        
-%                          title('imag')
-%                                                
-%     figure(23); subplot(2,1,1); plot(real(pulseBarker), 'b');                         
-%                          title('real')
-%          subplot(2,1,2); plot(imag(pulseBarker), 'r');                        
-%                          title('imag')
 
-%     figure(111);
-%     subplot(2,1,1);
-%     plot(real(yt));
-%     subplot(2,1,2);
-%     plot(imag(yt));
-    %load('debugPacket.mat')
-%end
+end

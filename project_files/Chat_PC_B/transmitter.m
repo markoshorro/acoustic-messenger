@@ -9,11 +9,9 @@ function transmitter( packet, fc )
     %
     % OUTPUT: SOUND to the speaker
     %
-    global symbols;
+    
     run('../parameters.m');
-   % pilot = zeros(1,20);
     packet = [packet'];        % Just for test
-%     fc = 6000;
 
     % Split in m columns
     bitsGroup = buffer(packet,m)';     
@@ -25,13 +23,13 @@ function transmitter( packet, fc )
     % Match barker code with BPSK constellation
     symbolsBarker = constBPSK(symbBarker);
     
-     % Match guard code with BPSK constellation
-    symbolsGuard = constBPSK(symbGuard);
-    
+    % Match barker code with BPSK constellation
+    symbolsGuard = constBPSK(singleGuard); 
+ 
     symbols = [symbolsBarker.'; symbolsGuard.'; symbols];
     
     % Space the symbols fsfd apart, to enable pulse shaping using conv
-    symbolsUp = upsample(symbols, round(sps));
+    symbolsUp = upsample(symbols, sps);
         
     % Pulse convolution
     [si,~] = rtrcpuls(rollOff, Tau, fs, span);
@@ -39,6 +37,8 @@ function transmitter( packet, fc )
     
     % Getting convoluted signal without heads nor tails
     sTailless = st(sps*span:end-sps*span);
+    sTailless = [sTailless(1:sps*nBarker); upsample(guard,sps).';...
+        sTailless(sps*nBarker+1:end)];
     
     % Converting onto passband signal
     t = ((1:length(sTailless))/fs).';
@@ -49,29 +49,4 @@ function transmitter( packet, fc )
     
     % Output through the speaker
     sound(sPassband, fs);
-
-    %% DEBUGGING
-%     figure(1); subplot(2,1,1); plot(real(sTailless), 'b');                         
-%                              title('Real Part Concatinated - BaseBand')
-%              subplot(2,1,2); plot(imag(sTailless), 'r');                        
-%                              title('Imaginary Part Concatinated - BaseBand')
-                             
-%     figure(2); subplot(2,1,1); plot(real(st), 'b');                         
-%                              title('Real Part - BaseBand')
-%              subplot(2,1,2); plot(imag(st), 'r');                        
-%                              title('Imaginary Part - BaseBand')
-
-%     figure(3); subplot(2,1,1); plot(real(sPassband), 'b');                         
-%                              title('Real Part - PassBand')
-%              subplot(2,1,2); plot(imag(sPassband), 'r');                        
-%                              title('Imaginary Part PassBand')
-%     figure(1);
-%     pwelch(sPassband,hamming(512),[],[],fs,'centered');
-%     
-%     figure(2)
-%     plot(sPassband)
-%     figure; subplot(2,1,1); plot(real(sTailness), 'b');                         
-%                              title('real')
-%              subplot(2,1,2); plot(imag(sTailness), 'b');                        
-%                              title('imag')
 end
